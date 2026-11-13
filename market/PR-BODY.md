@@ -29,7 +29,7 @@ Records and descriptive statistics only. No diagnosis, treatment, medication adv
 - [x] `package.json` declares `dsh.bundle` and `dsh.client`.
 - [x] `cordis.patch.yml` inserts the plugin.
 - [x] No build step; source is plain ESM/JS.
-- [x] Package: `dsh-health-management` (npm) / GitHub source install works.
+- [x] Install sources: GitHub source + release tarball (npm not published in this release).
 - [x] Tests: `node scripts/check.mjs` → 248/248 smoke checks.
 - [x] Icon: 180×180 PNG.
 - [x] Screenshots: `screenshots.json` in the repository.
@@ -39,10 +39,11 @@ Records and descriptive statistics only. No diagnosis, treatment, medication adv
 ## Install
 
 ```sh
-dsh plugin --profile <profile> add dsh-health-management
-# or, before npm publish:
 dsh plugin --profile <profile> add github:hebin-cl/dsh-health-management
 ```
+
+Or install the release tarball from
+`https://github.com/hebin-cl/dsh-health-management/releases/latest/download/dsh-health-management.tgz`.
 
 ## Notes
 
