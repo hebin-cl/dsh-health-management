@@ -2,7 +2,7 @@
 
 Status: **published to GitHub** at
 <https://github.com/hebin-cl/dsh-health-management> on `main`, with a public
-`v1.2.0` release and a validated format-1 `index.json`.
+`v1.2.1` release and a validated format-1 `index.json`.
 
 npm is intentionally **not published** for this release. GitHub source and the
 release tarball are the supported install sources. The npm package name stays
@@ -35,7 +35,7 @@ full smoke test in a temporary directory.
 
 ## 3. Native Discover index (format 1)
 
-`index.json` is committed and pinned to the initial release commit. Add this
+`index.json` is committed and pinned to the current release commit. Add this
 source in DSH: **Plugins → Discover → Index sources**:
 
 ```text
