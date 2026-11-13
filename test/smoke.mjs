@@ -95,6 +95,8 @@ function stamp(offsetDays, hour = 7, minute = 0) {
 const dir = await mkdtemp(join(tmpdir(), 'dsh-health-'))
 const service = new HealthService(dir)
 await service.init()
+const seededMembers = await service.listMembers()
+check('default seed is only 我', seededMembers.length === 1 && seededMembers[0].name === '我', seededMembers)
 
 console.log('\n[members]')
 const dad = await service.createMember({ name: '爸爸', sex: 'male', relation: 'father', birthYear: 1965, riskLevel: 'high' })
