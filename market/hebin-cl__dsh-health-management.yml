@@ -9,5 +9,4 @@ description:
   en: "Family health records and management goals for DeepSeek Harness: metabolic monitoring plus a 12-week lean-muscle account with training, protein, sleep and water, a weekly ledger, an observation-only body-composition statement, progress photos and a health archive. Records only; no diagnosis or medication advice."
   zh: "DeepSeek Harness 的家庭健康记录与管理目标：代谢指标监测，以及 12 周薄肌账户（训练、蛋白、睡眠、饮水）、周对账、只观察的体成分对账单、身材照片与健康档案。仅做记录，不提供诊断或用药建议。"
 icon: https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/icon-180.png
-# Optional: attach a prebuilt tarball to a GitHub Release and uncomment.
-# tarball: https://github.com/hebin-cl/dsh-health-management/releases/latest/download/dsh-health-management.tgz
+tarball: https://github.com/hebin-cl/dsh-health-management/releases/latest/download/dsh-health-management.tgz
