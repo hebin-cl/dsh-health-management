@@ -15,6 +15,7 @@ The flagship view is **Lean Account / 薄肌账户**: four behaviour accounts (t
 ## Features
 
 - **Family members** — up to 8 profiles, sex-aware reference ranges, optional risk level for LDL-C targets.
+- **Me first** — opens on **我** (self); other members appear only after the user adds them.
 - **Metrics** — blood pressure, heart rate, fasting/postprandial glucose, HbA1c, lipids, uric acid, weight, BMI, waist, body fat, skeletal muscle, protein, water, sleep, strength-training minutes.
 - **Management goals** — `metabolic` (core metabolic monitoring) and `lean_muscle` (12-week lean account).
 - **Lean Account** — 大练 / 蛋白 / 大睡 / 大水 accounts; daily deposits; 7×4 weekly ledger; season checkpoints; season review; new season without deleting history.
