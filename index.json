@@ -32,7 +32,7 @@
         "zh": "家庭健康记录与管理目标：代谢指标监测，以及 12 周薄肌账户、周对账、体成分对账单、身材照片与健康档案。仅做记录，不提供诊断或用药建议。"
       },
       "icon": "https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/icon-180.png",
-      "author": "HMA contributors",
+      "author": "hebin-cl",
       "homepage": "https://github.com/hebin-cl/dsh-health-management#readme",
       "repository": {
         "url": "https://github.com/hebin-cl/dsh-health-management"
@@ -59,11 +59,11 @@
       "versions": [
         {
           "version": "1.2.0",
-          "publishTimestamp": 1794543691,
+          "publishTimestamp": 1794543797,
           "source": {
             "type": "git",
             "url": "https://github.com/hebin-cl/dsh-health-management",
-            "commit": "eeea107d69379a6256917d4a6de3ede541d72989"
+            "commit": "0c3017ffcc7207d40cab96a5320de898d7add8db"
           },
           "engines": {
             "dsh": ">=0.2.2-rc.1 <0.3.0"
