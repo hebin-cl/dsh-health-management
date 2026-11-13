@@ -122,7 +122,7 @@ export function apply(ctx, config) {
       parameters: {
         type: 'object',
         properties: {
-          name: { type: 'string', description: '成员称呼，如「爸爸」「妈妈」「我」' },
+          name: { type: 'string', description: '成员称呼，如「我」' },
           sex: { type: 'string', enum: ['male', 'female'], description: '性别，必填' },
           relation: {
             type: 'string',
