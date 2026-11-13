@@ -58,12 +58,12 @@
       },
       "versions": [
         {
-          "version": "1.2.0",
-          "publishTimestamp": 1794545946,
+          "version": "1.2.1",
+          "publishTimestamp": 1794546325,
           "source": {
             "type": "git",
             "url": "https://github.com/hebin-cl/dsh-health-management",
-            "commit": "40fa591ca3629c96cec1ff860b08d66b21c1432d"
+            "commit": "b2659fec3d72db20d37eef972da4331529fff85f"
           },
           "engines": {
             "dsh": ">=0.2.2-rc.1 <0.3.0"
