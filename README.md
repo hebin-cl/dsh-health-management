@@ -52,7 +52,7 @@ After install, refresh the Web UI (or restart the host if the profile asks for i
 
 ### Discover it in the DSH plugin market
 
-- The plugin is submitted to the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) registry. Once merged, it becomes searchable in the **dshmarket** Discover tab and installable with one click.
+- A submission entry is prepared at [`market/awesome-dsh-plugin-entry.yml`](market/awesome-dsh-plugin-entry.yml); after the repository is at least one day old, open a PR to the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) registry. Once merged, it becomes searchable in the **dshmarket** Discover tab and installable with one click.
 - Until then, add the included native format-1 index from **Plugins → Discover → Index sources**:
 
   ```
