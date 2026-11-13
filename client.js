@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: '@local/dsh-health',
+  id: 'dsh-health-management',
   factory(require) {
     const React = require('react')
     const h = React.createElement
