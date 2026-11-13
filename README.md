@@ -28,13 +28,7 @@ The flagship view is **Lean Account / 薄肌账户**: four behaviour accounts (t
 
 Requires **DeepSeek Harness `>=0.2.2-rc.1 <0.3.0`** and Node.js 22+.
 
-### From npm (recommended)
-
-```sh
-dsh plugin --profile <your-profile> add dsh-health-management
-```
-
-### From GitHub
+### From GitHub (recommended)
 
 ```sh
 dsh plugin --profile <your-profile> add github:hebin-cl/dsh-health-management
@@ -48,6 +42,8 @@ Download `dsh-health-management.tgz` from [Releases](https://github.com/hebin-cl
 dsh plugin --profile <your-profile> add ./dsh-health-management.tgz
 ```
 
+The npm package is **not published** in this release; GitHub or the release tarball are the supported sources. The package name stays `dsh-health-management` for a future npm release.
+
 After install, refresh the Web UI (or restart the host if the profile asks for it).
 
 ### Discover it in the DSH plugin market
@@ -59,7 +55,7 @@ After install, refresh the Web UI (or restart the host if the profile asks for i
   https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json
   ```
 
-  `index.json` is pinned to the initial release commit. If you rewrite history or publish a new tag, regenerate it with `node scripts/build-market-index.mjs --owner hebin-cl --source git` (or `--source npm` after publishing).
+  `index.json` is pinned to the initial release commit. If you rewrite history or publish a new tag, regenerate it with `node scripts/build-market-index.mjs --owner hebin-cl --source git`.
 
 ## Quick start
 
@@ -118,7 +114,7 @@ scripts/              Checks and market-index generator
 The submission entry is prepared at [`market/awesome-dsh-plugin-entry.yml`](market/awesome-dsh-plugin-entry.yml). To list the plugin:
 
 1. Create/push the GitHub repository and add the `dsh-plugin` topic.
-2. Publish to npm (optional but recommended), or attach a prebuilt `dsh-health-management.tgz` to a GitHub Release.
+2. Use the GitHub source or the prebuilt `dsh-health-management.tgz` attached to a GitHub Release (the included workflow does this on a tag). npm is optional and not required for listing.
 3. Fork `awesome-dsh-plugin/awesome-dsh-plugin`, add `data/plugins/<owner>__dsh-health-management.yml` from the template, and open a PR (the guide allows at most 3 entries per PR; a repository must be at least 1 day old).
 4. Optional: the repository already includes `index.json` for the host’s native **Discover → Index sources**.
 
