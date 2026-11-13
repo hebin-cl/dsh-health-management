@@ -1,6 +1,6 @@
-# Copy this file to the awesome-dsh-plugin registry as:
-#   data/plugins/<owner>__dsh-health-management.yml
-# Replace hebin-cl with the GitHub owner before opening the PR.
+# Ready to copy into the awesome-dsh-plugin registry as:
+#   data/plugins/hebin-cl__dsh-health-management.yml
+
 
 url: https://github.com/hebin-cl/dsh-health-management
 name: hebin-cl/dsh-health-management
