@@ -1,30 +1,25 @@
 # Publishing this plugin
 
-This repository is ready to push. It is not yet linked to a GitHub remote.
+This directory is already a git repository configured for **hebin-cl**, with
+owner placeholders filled, commits on `main`, and a validated `index.json`.
+Only the remote, npm login and registry PR remain.
 
 ## 1. Create the GitHub repository
 
-Create a **public** repository named `dsh-health-management` under your account
-(or organization), with no README, no `.gitignore`, and no license — this
-repository already contains all three.
+Create a **public** repository named `dsh-health-management` under `hebin-cl`,
+with no README, no `.gitignore`, and no license — this repository already
+contains all three.
 
-Then fill the owner placeholder:
+Prefilled creation page:
 
-```sh
-cd dsh-health-management
-node scripts/configure-repo.mjs --owner YOUR_GITHUB_NAME
+```text
+https://github.com/new?name=dsh-health-management&owner=hebin-cl
 ```
 
-This replaces `hebin-cl` in `package.json`, both READMEs and the market entry.
-
-## 2. Push the first commit
+## 2. Push the existing commits
 
 ```sh
-git init
-git add .
-git commit -m "feat: initial public release"
-git branch -M main
-git remote add origin https://github.com/YOUR_GITHUB_NAME/dsh-health-management.git
+git remote add origin https://github.com/hebin-cl/dsh-health-management.git
 git push -u origin main
 ```
 
@@ -39,18 +34,24 @@ node scripts/check.mjs
 The script runs `node --check` over the host/client sources and executes the
 full smoke test in a temporary directory.
 
-## 4. Optional: publish to npm
+## 4. Publish to npm
 
-The package name `dsh-health-management` is unscoped and public. After
-`npm login`:
+The package name `dsh-health-management` is unscoped and currently available.
+After `npm login`:
 
 ```sh
 npm publish
 ```
 
-The package `repository` field already points at the GitHub repository, so the
-curated market can link the two automatically. npm is optional: GitHub source
-installs work without it.
+On this machine npm is not on `PATH`; use:
+
+```powershell
+& "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\npm.cmd" login
+& "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\npm.cmd" publish
+```
+
+The `repository` field already points at the GitHub repository. npm is
+optional: the curated registry can install from GitHub source without it.
 
 ## 5. Optional: create a GitHub Release
 
@@ -59,17 +60,17 @@ git tag v1.2.0
 git push origin v1.2.0
 ```
 
-The `Release` workflow runs the checks, creates `dsh-health-management.tgz`,
-and uploads it to the tag. Storefronts can use:
+The `Release` workflow creates `dsh-health-management.tgz` and uploads it to
+the tag. Storefronts can use:
 
 ```text
-https://github.com/YOUR_GITHUB_NAME/dsh-health-management/releases/latest/download/dsh-health-management.tgz
+https://github.com/hebin-cl/dsh-health-management/releases/latest/download/dsh-health-management.tgz
 ```
 
 ## 6. Native Discover index (format 1)
 
-`index.json` is already generated for the initial release commit and included
-in the repository. After the first push, add this source in DSH:
+`index.json` is already committed and pinned to the initial release commit.
+After the first push, add this source in DSH:
 **Plugins → Discover → Index sources**:
 
 ```text
@@ -89,12 +90,12 @@ git push
 ## 7. Curated awesome-dsh-plugin listing
 
 1. Fork `https://github.com/awesome-dsh-plugin/awesome-dsh-plugin`.
-2. Copy `market/awesome-dsh-plugin-entry.yml` to
-   `data/plugins/YOUR_GITHUB_NAME__dsh-health-management.yml` and replace the
-   owner placeholder.
-3. Open a PR. The repository must be **at least 1 day old**, must declare
-   `dsh.bundle` (this one does), and must have the `dsh-plugin` topic.
-4. The guide allows at most 3 entries per PR. Keep the description factual; the
+2. Copy `market/hebin-cl__dsh-health-management.yml` to
+   `data/plugins/hebin-cl__dsh-health-management.yml`.
+3. Open a PR; use `market/PR-BODY.md` as the description.
+4. The repository must be **at least 1 day old**, must declare `dsh.bundle`
+   (this one does), and must have the `dsh-plugin` topic.
+5. The guide allows at most 3 entries per PR. Keep the description factual; the
    reviewers check it against the code.
 
 Once merged, the plugin is searchable in the **dshmarket** Discover tab and the
@@ -102,9 +103,7 @@ site; install works from npm or GitHub.
 
 ## 8. Asset rights
 
-Before pushing publicly, read [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-The hero photograph is user-provided; the MIT license does **not** cover it.
-If you do not have public distribution / portrait rights, replace
-`assets/hero-torso.webp` and the screenshots, or use the public-domain
-sculpture fallback described there. The plugin code itself can be published
-independently of that image.
+The user confirmed public distribution/portrait rights for the hero photograph.
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); the MIT license covers the
+source code, not that image. If the scope of publication changes, re-confirm or
+replace the image (the public-domain sculpture fallback is documented there).
