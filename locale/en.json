@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "title": "Health management",
+    "description": "Records blood pressure, glucose, lipids, heart rate, weight, uric acid, waist, body fat, water, sleep and training for up to 8 family members, organised around management goals (metabolic syndrome management, lean-muscle management). Lean-muscle is presented as a lean account: four behaviour accounts (training/protein/sleep/water), a 12-week season, a weekly ledger and an observation-only body-composition statement. Recording and descriptive statistics only, never diagnosis, training, nutrition or medication advice."
+  },
+  "panel": {
+    "title": "Health management"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+*.tgz
+.dsh-health/
+.DS_Store
+Thumbs.db
+*.log
+coverage/
+dist/
+.idea/
+.vscode/

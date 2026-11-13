@@ -1,0 +1,75 @@
+{
+  "name": "dsh-health-management",
+  "version": "1.2.0",
+  "description": "Family health records and management goals for DeepSeek Harness: metabolic monitoring plus a 12-week lean-muscle account (training, protein, sleep, water), weekly ledger, body-composition statement, progress photos, and a health archive. Records only; no diagnosis or medication advice.",
+  "type": "module",
+  "license": "MIT",
+  "author": "HMA contributors",
+  "icon": "./assets/icon-180.png",
+  "homepage": "https://github.com/__OWNER__/dsh-health-management#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/__OWNER__/dsh-health-management.git"
+  },
+  "bugs": {
+    "url": "https://github.com/__OWNER__/dsh-health-management/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "health",
+    "health-management",
+    "family-health",
+    "fitness",
+    "metabolic",
+    "lean-muscle",
+    "body-composition",
+    "goals",
+    "photos"
+  ],
+  "engines": {
+    "node": ">=22",
+    "dsh": ">=0.2.2-rc.1 <0.3.0"
+  },
+  "scripts": {
+    "test": "node test/smoke.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/**/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "assets/*.webp",
+    "assets/*.png",
+    "icon.svg",
+    "README.md",
+    "README.zh.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
