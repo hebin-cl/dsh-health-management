@@ -32,7 +32,7 @@
 dsh plugin --profile <profile> add dsh-health-management
 
 # GitHub 源码
-dsh plugin --profile <profile> add github:__OWNER__/dsh-health-management
+dsh plugin --profile <profile> add github:hebin-cl/dsh-health-management
 
 # Release tarball
 dsh plugin --profile <profile> add ./dsh-health-management.tgz

@@ -6,13 +6,13 @@
   "license": "MIT",
   "author": "HMA contributors",
   "icon": "./assets/icon-180.png",
-  "homepage": "https://github.com/__OWNER__/dsh-health-management#readme",
+  "homepage": "https://github.com/hebin-cl/dsh-health-management#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/__OWNER__/dsh-health-management.git"
+    "url": "git+https://github.com/hebin-cl/dsh-health-management.git"
   },
   "bugs": {
-    "url": "https://github.com/__OWNER__/dsh-health-management/issues"
+    "url": "https://github.com/hebin-cl/dsh-health-management/issues"
   },
   "keywords": [
     "dsh",

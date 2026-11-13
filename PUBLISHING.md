@@ -15,7 +15,7 @@ cd dsh-health-management
 node scripts/configure-repo.mjs --owner YOUR_GITHUB_NAME
 ```
 
-This replaces `__OWNER__` in `package.json`, both READMEs and the market entry.
+This replaces `hebin-cl` in `package.json`, both READMEs and the market entry.
 
 ## 2. Push the first commit
 

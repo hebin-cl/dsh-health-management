@@ -37,12 +37,12 @@ dsh plugin --profile <your-profile> add dsh-health-management
 ### From GitHub
 
 ```sh
-dsh plugin --profile <your-profile> add github:__OWNER__/dsh-health-management
+dsh plugin --profile <your-profile> add github:hebin-cl/dsh-health-management
 ```
 
 ### From a release tarball
 
-Download `dsh-health-management.tgz` from [Releases](https://github.com/__OWNER__/dsh-health-management/releases) and install the local file:
+Download `dsh-health-management.tgz` from [Releases](https://github.com/hebin-cl/dsh-health-management/releases) and install the local file:
 
 ```sh
 dsh plugin --profile <your-profile> add ./dsh-health-management.tgz
@@ -56,10 +56,10 @@ After install, refresh the Web UI (or restart the host if the profile asks for i
 - Until then, add a native format-1 index from **Plugins → Discover → Index sources**:
 
   ```
-  https://raw.githubusercontent.com/__OWNER__/dsh-health-management/main/index.json
+  https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json
   ```
 
-  (Generate `index.json` first with `node scripts/build-market-index.mjs --owner __OWNER__ --source git` after the first commit, or publish to npm and use `--source npm`.)
+  (Generate `index.json` first with `node scripts/build-market-index.mjs --owner hebin-cl --source git` after the first commit, or publish to npm and use `--source npm`.)
 
 ## Quick start
 
