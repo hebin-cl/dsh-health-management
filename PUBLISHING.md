@@ -68,23 +68,23 @@ https://github.com/YOUR_GITHUB_NAME/dsh-health-management/releases/latest/downlo
 
 ## 6. Native Discover index (format 1)
 
-Generate an index pinned to the current commit:
-
-```sh
-node scripts/build-market-index.mjs --owner YOUR_GITHUB_NAME --source git
-git add index.json
-git commit -m "chore: add plugin market index"
-git push
-```
-
-Then in DSH: **Plugins → Discover → Index sources** add:
+`index.json` is already generated for the initial release commit and included
+in the repository. After the first push, add this source in DSH:
+**Plugins → Discover → Index sources**:
 
 ```text
-https://raw.githubusercontent.com/YOUR_GITHUB_NAME/dsh-health-management/main/index.json
+https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json
 ```
 
-If you published to npm, use `--source npm` instead; the version installs from
-the npm registry.
+If you rewrite history, publish a new tag, or switch to npm, regenerate it:
+
+```sh
+node scripts/build-market-index.mjs --owner hebin-cl --source git
+# or: --source npm  (after npm publish)
+git add index.json
+git commit -m "chore: refresh plugin market index"
+git push
+```
 
 ## 7. Curated awesome-dsh-plugin listing
 

@@ -53,13 +53,13 @@ After install, refresh the Web UI (or restart the host if the profile asks for i
 ### Discover it in the DSH plugin market
 
 - The plugin is submitted to the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) registry. Once merged, it becomes searchable in the **dshmarket** Discover tab and installable with one click.
-- Until then, add a native format-1 index from **Plugins → Discover → Index sources**:
+- Until then, add the included native format-1 index from **Plugins → Discover → Index sources**:
 
   ```
   https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json
   ```
 
-  (Generate `index.json` first with `node scripts/build-market-index.mjs --owner hebin-cl --source git` after the first commit, or publish to npm and use `--source npm`.)
+  `index.json` is pinned to the initial release commit. If you rewrite history or publish a new tag, regenerate it with `node scripts/build-market-index.mjs --owner hebin-cl --source git` (or `--source npm` after publishing).
 
 ## Quick start
 
@@ -120,7 +120,7 @@ The submission entry is prepared at [`market/awesome-dsh-plugin-entry.yml`](mark
 1. Create/push the GitHub repository and add the `dsh-plugin` topic.
 2. Publish to npm (optional but recommended), or attach a prebuilt `dsh-health-management.tgz` to a GitHub Release.
 3. Fork `awesome-dsh-plugin/awesome-dsh-plugin`, add `data/plugins/<owner>__dsh-health-management.yml` from the template, and open a PR (the guide allows at most 3 entries per PR; a repository must be at least 1 day old).
-4. Optional: generate `index.json` for the host’s native **Discover → Index sources**.
+4. Optional: the repository already includes `index.json` for the host’s native **Discover → Index sources**.
 
 ## License
 

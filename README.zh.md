@@ -79,7 +79,7 @@ smoke 使用临时目录，不触碰真实 `.dsh-health/` 数据。
 - 投稿模板：[`market/awesome-dsh-plugin-entry.yml`](market/awesome-dsh-plugin-entry.yml)。
 - 步骤：创建/推送 GitHub 仓库 → 加 `dsh-plugin` topic →（可选）发布 npm 或上传 Release tarball → fork `awesome-dsh-plugin/awesome-dsh-plugin`，把模板复制为 `data/plugins/<owner>__dsh-health-management.yml`，提 PR。
 - 仓库需创建满 1 天；一个 PR 最多 3 条；描述必须与代码一致。
-- 原生 Discover 索引：运行 `node scripts/build-market-index.mjs --owner <owner> --source git` 生成 `index.json`，在 **Plugins → Discover → Index sources** 添加其 raw URL。
+- 原生 Discover 索引：仓库已包含 `index.json`（指向初始发布 commit），在 **Plugins → Discover → Index sources** 添加 `https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json` 即可；重写历史或发新 tag 后运行 `node scripts/build-market-index.mjs --owner hebin-cl --source git` 重新生成。
 
 ## 许可
 
