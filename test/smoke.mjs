@@ -99,11 +99,11 @@ const seededMembers = await service.listMembers()
 check('default seed is only 我', seededMembers.length === 1 && seededMembers[0].name === '我', seededMembers)
 
 console.log('\n[members]')
-const dad = await service.createMember({ name: '爸爸', sex: 'male', relation: 'father', birthYear: 1965, riskLevel: 'high' })
+const dad = await service.createMember({ name: '成员A', sex: 'male', relation: 'father', birthYear: 1965, riskLevel: 'high' })
 check('create first member', dad.ok, dad)
-const mom = await service.createMember({ name: '妈妈', sex: 'female', relation: 'mother', birthYear: 1968 })
+const mom = await service.createMember({ name: '成员B', sex: 'female', relation: 'mother', birthYear: 1968 })
 check('create second member', mom.ok, mom)
-const dup = await service.createMember({ name: '爸爸', sex: 'male' })
+const dup = await service.createMember({ name: '成员A', sex: 'male' })
 check('duplicate name rejected', !dup.ok, dup)
 const noSex = await service.createMember({ name: '叔叔' })
 check('missing sex rejected', !noSex.ok, noSex)
@@ -120,8 +120,8 @@ const overflow = await service.createMember({ name: '多余的人', sex: 'male' 
 check('9th member rejected', !overflow.ok && /上限/.test(overflow.error), overflow)
 
 console.log('\n[reference bands]')
-const maleMember = (await service.findMember('爸爸'))
-const femaleMember = (await service.findMember('妈妈'))
+const maleMember = (await service.findMember('成员A'))
+const femaleMember = (await service.findMember('成员B'))
 const ua = METRICS.find((m) => m.code === 'ua')
 check('uric acid male band 420', resolveBand(ua, maleMember).band.high === 420, resolveBand(ua, maleMember))
 check('uric acid female band 360', resolveBand(ua, femaleMember).band.high === 360, resolveBand(ua, femaleMember))
@@ -141,39 +141,39 @@ const ambiguous = await service.record({ values: { sbp: 138, dbp: 88 } })
 check('ambiguous owner rejected, not guessed', !ambiguous.ok && ambiguous.needsMember === true, ambiguous)
 
 const rec = await service.record({
-  member: '爸爸', measuredAt: '2026-11-10 07:12', context: 'morning',
+  member: '成员A', measuredAt: '2026-11-10 07:12', context: 'morning',
   values: { sbp: 145, dbp: 95, hr: 72 }, source: 'text',
 })
 check('multi-metric record saved', rec.ok && Object.keys(rec.record.values).length === 3, rec)
-const badRange = await service.record({ member: '爸爸', values: { sbp: 900 } })
+const badRange = await service.record({ member: '成员A', values: { sbp: 900 } })
 check('out-of-range value rejected', !badRange.ok, badRange)
 
 for (let day = 1; day <= 10; day += 1) {
   await service.record({
-    member: '爸爸', measuredAt: `2026-11-${String(day).padStart(2, '0')} 07:00`,
+    member: '成员A', measuredAt: `2026-11-${String(day).padStart(2, '0')} 07:00`,
     context: 'morning', values: { sbp: 130 + day, dbp: 80 + (day % 5), hr: 70 },
   })
 }
-await service.record({ member: '爸爸', measuredAt: stamp(0), values: { waist: 95, bodyfat: 22 } })
-await service.record({ member: '妈妈', measuredAt: '2026-11-10 07:30', values: { sbp: 118, dbp: 76, ua: 300 } })
+await service.record({ member: '成员A', measuredAt: stamp(0), values: { waist: 95, bodyfat: 22 } })
+await service.record({ member: '成员B', measuredAt: '2026-11-10 07:30', values: { sbp: 118, dbp: 76, ua: 300 } })
 for (const [offset, minutes] of [[-1, 50], [-3, 40]]) {
-  await service.record({ member: '妈妈', measuredAt: stamp(offset, 20), context: 'evening', values: { training: minutes } })
+  await service.record({ member: '成员B', measuredAt: stamp(offset, 20), context: 'evening', values: { training: minutes } })
 }
 await service.record({
-  member: '妈妈', measuredAt: stamp(0, 7, 30), context: 'morning',
+  member: '成员B', measuredAt: stamp(0, 7, 30), context: 'morning',
   values: { weight: 55, bodyfat: 25, muscle: 20, waist: 80, protein: 80 },
 })
 
 console.log('\n[query and stats]')
-const stats = await service.stats({ member: '爸爸', metric: 'sbp', from: '2026-11-01' })
+const stats = await service.stats({ member: '成员A', metric: 'sbp', from: '2026-11-01' })
 check('stats returns sample count', stats.ok && stats.sampleCount === 11, stats.sampleCount)
 check('stats carries no advice field', !('advice' in stats) && !('suggestion' in stats))
 
 console.log('\n[metric evaluation]')
-const dadOverview = await service.overview('爸爸')
+const dadOverview = await service.overview('成员A')
 check('male waist 95 flagged high', dadOverview.latest.find((m) => m.code === 'waist')?.status === 'high')
 check('male body fat 22 flagged high', dadOverview.latest.find((m) => m.code === 'bodyfat')?.status === 'high')
-const momOverview = await service.overview('妈妈')
+const momOverview = await service.overview('成员B')
 check('female waist 80 not flagged', momOverview.latest.find((m) => m.code === 'waist')?.status === 'normal')
 check('female body fat 25 normal', momOverview.latest.find((m) => m.code === 'bodyfat')?.status === 'normal')
 check('unbounded metric stays unknown', momOverview.latest.find((m) => m.code === 'protein')?.status === 'unknown')
@@ -181,34 +181,34 @@ check('weight has no generic claim', momOverview.latest.find((m) => m.code === '
 
 console.log('\n[conditions: suggest]')
 // Dad's latest sbp is 140 (Nov 10), dbp 85 — sbp hits the 140 cut-point.
-const sugg = await service.suggestConditionsForMember('爸爸')
+const sugg = await service.suggestConditionsForMember('成员A')
 check('suggests hypertension for elevated sbp', sugg.ok && sugg.suggestions.some((s) => s.code === 'hypertension'), sugg)
 check('suggestion carries caveat, no persistence', sugg.suggestions.every((s) => s.note), sugg)
 
 console.log('\n[conditions: add/list/remove]')
-const addReport = await service.addCondition('爸爸', { code: 'hyperlipidemia', source: 'report', note: '2026-11 体检报告' })
+const addReport = await service.addCondition('成员A', { code: 'hyperlipidemia', source: 'report', note: '2026-11 体检报告' })
 check('add report-sourced condition', addReport.ok && addReport.condition.source === 'report', addReport)
-const addRecognized = await service.addCondition('爸爸', { code: 'hypertension', source: 'recognized' })
+const addRecognized = await service.addCondition('成员A', { code: 'hypertension', source: 'recognized' })
 check('add recognized condition', addRecognized.ok && addRecognized.condition.source === 'recognized', addRecognized)
-const addDup = await service.addCondition('爸爸', { code: 'hypertension', source: 'manual' })
+const addDup = await service.addCondition('成员A', { code: 'hypertension', source: 'manual' })
 check('duplicate condition rejected', !addDup.ok, addDup)
-const addBad = await service.addCondition('爸爸', { code: 'nonsense', source: 'manual' })
+const addBad = await service.addCondition('成员A', { code: 'nonsense', source: 'manual' })
 check('unknown condition code rejected', !addBad.ok, addBad)
-const badSource = await service.addCondition('爸爸', { code: 'diabetes', source: 'guessed' })
+const badSource = await service.addCondition('成员A', { code: 'diabetes', source: 'guessed' })
 check('invalid source rejected', !badSource.ok, badSource)
 
-const list = await service.listConditions('爸爸')
+const list = await service.listConditions('成员A')
 check('conditions list has 2 tags', list.ok && list.total === 2, list)
 
 // After hypertension is confirmed, suggest should no longer return it.
-const suggAfter = await service.suggestConditionsForMember('爸爸')
+const suggAfter = await service.suggestConditionsForMember('成员A')
 check('confirmed condition not re-suggested', !suggAfter.suggestions.some((s) => s.code === 'hypertension'), suggAfter)
 
-const rmCond = await service.removeCondition('爸爸', 'hypertension')
+const rmCond = await service.removeCondition('成员A', 'hypertension')
 check('remove condition by code', rmCond.ok && rmCond.removed === '高血压', rmCond)
 
 console.log('\n[conditions: targets]')
-const targets = await service.conditionTargets('爸爸')
+const targets = await service.conditionTargets('成员A')
 check('targets returns condition rows', targets.ok && targets.conditions.length === 1, targets.conditions?.length)
 const lipidRow = targets.conditions?.[0]
 check('lipid target has LDL row', lipidRow?.targets.some((t) => t.metric === 'ldl'), lipidRow)
@@ -216,8 +216,8 @@ const ldlTarget = lipidRow?.targets.find((t) => t.metric === 'ldl')
 check('LDL target uses member override priority', ldlTarget?.high === 2.6, ldlTarget)
 
 console.log('\n[conditions: target boundary]')
-await service.record({ member: '爸爸', measuredAt: stamp(0, 9), values: { ldl: 2.6 } })
-const boundaryCondition = await service.conditionTargets('爸爸')
+await service.record({ member: '成员A', measuredAt: stamp(0, 9), values: { ldl: 2.6 } })
+const boundaryCondition = await service.conditionTargets('成员A')
 const ldlBoundary = boundaryCondition.conditions?.[0]?.targets.find((t) => t.metric === 'ldl')
 check('condition target lt boundary is not met', ldlBoundary?.status === 'high', ldlBoundary)
 
@@ -264,18 +264,18 @@ check('overview exposes goal templates', bareOverview.ok && bareOverview.goalTem
 check('overview starts with no goals', Array.isArray(bareOverview.goals) && bareOverview.goals.length === 0)
 
 console.log('\n[goals: set/update/validate]')
-const g1 = await service.setGoal('爸爸', { code: 'metabolic', status: 'active', source: 'report', note: '医生建议管理代谢指标' })
+const g1 = await service.setGoal('成员A', { code: 'metabolic', status: 'active', source: 'report', note: '医生建议管理代谢指标' })
 check('activate metabolic goal', g1.ok && g1.created === true && g1.goal.targets.length === 7, g1)
-const g2 = await service.setGoal('爸爸', { code: 'metabolic', targets: { sbp: 130 } })
+const g2 = await service.setGoal('成员A', { code: 'metabolic', targets: { sbp: 130 } })
 check('update goal personal target', g2.ok && g2.created === false, g2)
-const badGoal = await service.setGoal('爸爸', { code: 'nonsense' })
+const badGoal = await service.setGoal('成员A', { code: 'nonsense' })
 check('unknown goal rejected', !badGoal.ok, badGoal)
-const badMetric = await service.setGoal('爸爸', { code: 'metabolic', targets: { protein: 100 } })
+const badMetric = await service.setGoal('成员A', { code: 'metabolic', targets: { protein: 100 } })
 check('metric outside goal rejected', !badMetric.ok, badMetric)
-const badStatus = await service.setGoal('爸爸', { code: 'metabolic', status: 'weird' })
+const badStatus = await service.setGoal('成员A', { code: 'metabolic', status: 'weird' })
 check('invalid goal status rejected', !badStatus.ok, badStatus)
 
-const dadGoals = await service.goalOverview('爸爸')
+const dadGoals = await service.goalOverview('成员A')
 check('goal overview lists metabolic', dadGoals.ok && dadGoals.goals.some((g) => g.code === 'metabolic'), dadGoals)
 const metabolic = dadGoals.goals.find((g) => g.code === 'metabolic')
 check('goal summary carries coverage', metabolic.coverage.evaluable === 7 && metabolic.coverage.measured >= 3, metabolic.coverage)
@@ -284,19 +284,19 @@ check('goal waist row is sex-specific', metabolic.targets.find((t) => t.metric =
 check('goal sbp row evaluated as high', metabolic.targets.find((t) => t.metric === 'sbp')?.status === 'high')
 check('goal overview exposes tracking dimensions', metabolic.dimensions[0].metrics.length === 7)
 // "目标 <140" means 140 itself has not met the target.
-await service.setGoal('爸爸', { code: 'metabolic', targets: { sbp: 140 } })
-const boundaryGoal = (await service.goalOverview('爸爸')).goals.find((g) => g.code === 'metabolic')
+await service.setGoal('成员A', { code: 'metabolic', targets: { sbp: 140 } })
+const boundaryGoal = (await service.goalOverview('成员A')).goals.find((g) => g.code === 'metabolic')
 check('lt boundary at 140 is not met', boundaryGoal.targets.find((t) => t.metric === 'sbp')?.status === 'high',
   boundaryGoal.targets.find((t) => t.metric === 'sbp'))
-await service.setGoal('爸爸', { code: 'metabolic', status: 'paused', source: 'report' })
-const partialUpdate = await service.setGoal('爸爸', { code: 'metabolic', targets: { dbp: 85 } })
+await service.setGoal('成员A', { code: 'metabolic', status: 'paused', source: 'report' })
+const partialUpdate = await service.setGoal('成员A', { code: 'metabolic', targets: { dbp: 85 } })
 check('partial update keeps status and source',
   partialUpdate.goal.status === 'paused' && partialUpdate.goal.source === 'report', partialUpdate.goal)
 
 console.log('\n[goals: lean muscle]')
-const lean = await service.setGoal('妈妈', { code: 'lean_muscle' })
+const lean = await service.setGoal('成员B', { code: 'lean_muscle' })
 check('activate lean muscle goal', lean.ok, lean)
-const leanGoal = (await service.goalOverview('妈妈')).goals.find((g) => g.code === 'lean_muscle')
+const leanGoal = (await service.goalOverview('成员B')).goals.find((g) => g.code === 'lean_muscle')
 const proteinRow = leanGoal.targets.find((t) => t.metric === 'protein')
 check('protein per-kg range resolved from weight', proteinRow.kind === 'perKg' && proteinRow.low === 66 && proteinRow.high === 88, proteinRow)
 check('protein in range normal', proteinRow.status === 'normal', proteinRow)
@@ -315,11 +315,11 @@ check('coverage counts only the four accounts, never body composition',
   momCoverage.evaluable === 4 && leanGoal.targets.filter((t) => t.kind === 'observe').length === 4, momCoverage)
 
 // Personal targets without target semantics are rejected instead of silently stored.
-const trendTarget = await service.setGoal('妈妈', { code: 'lean_muscle', targets: { weight: 60 } })
+const trendTarget = await service.setGoal('成员B', { code: 'lean_muscle', targets: { weight: 60 } })
 check('observe target rejected', !trendTarget.ok && /只观察趋势/.test(trendTarget.error), trendTarget)
-const dimensionTarget = await service.setGoal('妈妈', { code: 'lean_muscle', targets: { waist: 80 } })
+const dimensionTarget = await service.setGoal('成员B', { code: 'lean_muscle', targets: { waist: 80 } })
 check('dimension-only target rejected', !dimensionTarget.ok, dimensionTarget)
-const bodyTarget = await service.setGoal('妈妈', { code: 'lean_muscle', targets: { bodyfat: 18 } })
+const bodyTarget = await service.setGoal('成员B', { code: 'lean_muscle', targets: { bodyfat: 18 } })
 check('observe body fat target rejected', !bodyTarget.ok && /只观察/.test(bodyTarget.error), bodyTarget)
 
 // HDL-C is a floor: a member-level personal target must tighten the minimum,
@@ -401,38 +401,38 @@ check('remove goal by code', removedGoal.ok, removedGoal)
 
 console.log('\n[progress photos]')
 const PNG_1X1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
-const photo = await service.uploadPhoto('妈妈', { dataBase64: PNG_1X1, takenAt: '2026-11-10', note: '晨起第一张' })
+const photo = await service.uploadPhoto('成员B', { dataBase64: PNG_1X1, takenAt: '2026-11-10', note: '晨起第一张' })
 check('upload progress photo', photo.ok && photo.photo.mime === 'image/png', photo)
-const photoList = await service.listPhotos('妈妈')
+const photoList = await service.listPhotos('成员B')
 check('list progress photos', photoList.ok && photoList.total === 1 && photoList.photos[0].takenAt.startsWith('2026-11-10'), photoList)
 check('photo metadata hides file path', !('filePath' in photoList.photos[0]))
 const photoBytes = await service.photoFile(photo.photo.id)
 check('photo bytes readable', photoBytes?.mime === 'image/png' && photoBytes.buffer.length > 0)
-const notImage = await service.uploadPhoto('妈妈', { dataBase64: 'data:image/png;base64,aGVsbG8=' })
+const notImage = await service.uploadPhoto('成员B', { dataBase64: 'data:image/png;base64,aGVsbG8=' })
 check('non-image bytes rejected', !notImage.ok, notImage)
-const overviewWithPhoto = await service.overview('妈妈')
+const overviewWithPhoto = await service.overview('成员B')
 check('overview carries photos', overviewWithPhoto.ok && overviewWithPhoto.photos.length === 1)
-const inspiration = await service.uploadPhoto('妈妈', {
+const inspiration = await service.uploadPhoto('成员B', {
   dataBase64: PNG_1X1, takenAt: '2026-11-09', kind: 'inspiration', note: '激励图',
 })
 check('upload inspiration image', inspiration.ok && inspiration.photo.kind === 'inspiration', inspiration)
-const bothPhotos = await service.listPhotos('妈妈')
+const bothPhotos = await service.listPhotos('成员B')
 check('photos keep their kind', bothPhotos.ok && bothPhotos.total === 2
   && bothPhotos.photos.filter((item) => item.kind === 'inspiration').length === 1, bothPhotos)
-const badKind = await service.uploadPhoto('妈妈', { dataBase64: PNG_1X1, kind: 'nonsense' })
+const badKind = await service.uploadPhoto('成员B', { dataBase64: PNG_1X1, kind: 'nonsense' })
 check('unknown photo kind rejected', !badKind.ok, badKind)
-const removeInspiration = await service.removePhoto('妈妈', inspiration.photo.id)
+const removeInspiration = await service.removePhoto('成员B', inspiration.photo.id)
 check('remove inspiration image', removeInspiration.ok)
-const removePhoto = await service.removePhoto('妈妈', photo.photo.id)
-check('remove progress photo', removePhoto.ok && (await service.listPhotos('妈妈')).total === 0, removePhoto)
+const removePhoto = await service.removePhoto('成员B', photo.photo.id)
+check('remove progress photo', removePhoto.ok && (await service.listPhotos('成员B')).total === 0, removePhoto)
 
 // Future dates are rejected; a tampered metadata path must never read or delete
 // a file outside the photos root.
-const futurePhoto = await service.uploadPhoto('妈妈', { dataBase64: PNG_1X1, takenAt: '2099-01-01' })
+const futurePhoto = await service.uploadPhoto('成员B', { dataBase64: PNG_1X1, takenAt: '2099-01-01' })
 check('future photo date rejected', !futurePhoto.ok, futurePhoto)
 const secret = join(dir, 'outside-secret.txt')
 await writeFile(secret, 'do not delete', 'utf8')
-const momId = (await service.findMember('妈妈')).id
+const momId = (await service.findMember('成员B')).id
 await service.photos.update((doc) => ({
   ...doc,
   photos: [...doc.photos, {
@@ -441,9 +441,9 @@ await service.photos.update((doc) => ({
   }],
 }))
 check('photo route refuses a path outside photos root', (await service.photoFile('evil-photo')) === null)
-const evilRemove = await service.removePhoto('妈妈', 'evil-photo')
+const evilRemove = await service.removePhoto('成员B', 'evil-photo')
 check('removePhoto refuses to delete outside photos root',
-  evilRemove.ok && (await stat(secret)).size === 13 && (await service.listPhotos('妈妈')).total === 0,
+  evilRemove.ok && (await stat(secret)).size === 13 && (await service.listPhotos('成员B')).total === 0,
   evilRemove)
 await rm(secret, { force: true })
 
@@ -471,8 +471,8 @@ check('forged member and photo directory cleaned up', forgedDelete.ok && forgedD
 console.log('\n[metrics: water and sleep]')
 const waterMetric = METRICS.find((metric) => metric.code === 'water')
 const sleepMetric = METRICS.find((metric) => metric.code === 'sleep')
-const maleMemberNow = await service.findMember('爸爸')
-const femaleMemberNow = await service.findMember('妈妈')
+const maleMemberNow = await service.findMember('成员A')
+const femaleMemberNow = await service.findMember('成员B')
 check('water metric is registered in ml',
   waterMetric?.unit === 'ml' && waterMetric?.category === 'diet' && waterMetric?.targetMode === 'range', waterMetric)
 check('sleep metric is registered in hours',
@@ -491,7 +491,7 @@ check('sleep 7 and 9 are inside the band',
 check('sleep below 7 is low', evaluate(sleepMetric, 6.9, maleMemberNow).status === 'low')
 check('sleep above 9 is high on the metric band', evaluate(sleepMetric, 9.1, maleMemberNow).status === 'high')
 
-const metricCatalog = await service.metricCatalog('妈妈')
+const metricCatalog = await service.metricCatalog('成员B')
 const waterEntry = metricCatalog.metrics?.find((metric) => metric.code === 'water')
 const sleepEntry = metricCatalog.metrics?.find((metric) => metric.code === 'sleep')
 check('metric catalog exposes the water floor',
@@ -555,7 +555,7 @@ check('goal review without a goal is rejected',
 const noSeason = await service.startGoalSeason('我')
 check('starting a season without a goal is rejected',
   noSeason.ok === false && /还没有/.test(noSeason.error ?? ''), noSeason)
-const metabolicSeason = await service.startGoalSeason('爸爸', 'metabolic')
+const metabolicSeason = await service.startGoalSeason('成员A', 'metabolic')
 check('metabolic goal cannot start a season',
   metabolicSeason.ok === false && /不是赛季制/.test(metabolicSeason.error ?? ''), metabolicSeason)
 const activateLean = await service.setGoal('我', { code: 'lean_muscle' })
@@ -860,7 +860,7 @@ check('ended season marks every checkpoint reached',
 check('ended season never reports negative time left', endedGoal.season.daysLeft >= 0)
 
 // The metabolic goal keeps its old seven-row target dashboard.
-const dadMetabolic = (await service.goalOverview('爸爸')).goals.find((g) => g.code === 'metabolic')
+const dadMetabolic = (await service.goalOverview('成员A')).goals.find((g) => g.code === 'metabolic')
 check('metabolic goal keeps seven target rows',
   dadMetabolic.targets.length === 7 && dadMetabolic.coverage.evaluable === 7, dadMetabolic.coverage)
 check('metabolic goal has no season or accounts',
@@ -904,23 +904,23 @@ check('lean disclaimer separates management goal from diagnosis',
   leanTpl.disclaimer)
 
 console.log('\n[documents]')
-const doc = await service.addDocument('爸爸', { type: 'lab_report', title: '2026 体检报告', docDate: '2026-11-10', note: '年度体检' })
+const doc = await service.addDocument('成员A', { type: 'lab_report', title: '2026 体检报告', docDate: '2026-11-10', note: '年度体检' })
 check('add document', doc.ok && doc.document.type === 'lab_report', doc)
-const docBad = await service.addDocument('爸爸', { type: 'nonsense' })
+const docBad = await service.addDocument('成员A', { type: 'nonsense' })
 check('bad document type rejected', !docBad.ok, docBad)
-const docList = await service.listDocuments('爸爸')
+const docList = await service.listDocuments('成员A')
 check('document list has 1 item', docList.ok && docList.total === 1, docList)
-const docFilter = await service.listDocuments('爸爸', { type: 'lab_report' })
+const docFilter = await service.listDocuments('成员A', { type: 'lab_report' })
 check('document type filter works', docFilter.total === 1, docFilter)
-const docRemove = await service.removeDocument('爸爸', doc.document.id)
+const docRemove = await service.removeDocument('成员A', doc.document.id)
 check('remove document', docRemove.ok, docRemove)
 
 console.log('\n[deletion cascades all domains]')
-const dadPhoto = await service.uploadPhoto('爸爸', { dataBase64: PNG_1X1, takenAt: '2026-11-10' })
+const dadPhoto = await service.uploadPhoto('成员A', { dataBase64: PNG_1X1, takenAt: '2026-11-10' })
 check('dad progress photo uploaded', dadPhoto.ok)
-const memberDeleteBlocked = await service.deleteMember('爸爸', false)
+const memberDeleteBlocked = await service.deleteMember('成员A', false)
 check('member delete blocked while data exists', !memberDeleteBlocked.ok && /管理目标/.test(memberDeleteBlocked.error), memberDeleteBlocked)
-const memberDelete = await service.deleteMember('爸爸', true)
+const memberDelete = await service.deleteMember('成员A', true)
 check('member delete cascades records/conditions/documents/goals/photos',
   memberDelete.ok && memberDelete.removedRecords > 0 && memberDelete.removedGoals === 1
   && memberDelete.removedPhotos === 1, memberDelete)
@@ -929,7 +929,7 @@ console.log('\n[persistence]')
 const reopened = new HealthService(dir)
 await reopened.init()
 check('data survives reload', (await reopened.listMembers()).length === MAX_MEMBERS - 1)
-const reopenedGoals = await reopened.goalOverview('妈妈')
+const reopenedGoals = await reopened.goalOverview('成员B')
 check('goal bindings survive reload', reopenedGoals.ok && reopenedGoals.goals.some((g) => g.code === 'lean_muscle'))
 check('goals document is tracked', reopened.dataPaths.goals.endsWith('goals.json'))
 
