@@ -1270,7 +1270,8 @@ window.__ModuleLoader__.load({
 
     // Remember the last selected member so a refresh does not jump back to the
     // first tab (family members care that the dashboard stays on their profile).
-    const SELECTED_MEMBER_KEY = 'dsh-health.selectedMember'
+    // v2 intentionally ignores old selections and opens on "我" by default.
+    const SELECTED_MEMBER_KEY = 'dsh-health.selectedMember.v2'
 
     function readSelectedMember() {
       try {
@@ -1287,6 +1288,14 @@ window.__ModuleLoader__.load({
       } catch {
         // ignore: storage unavailable
       }
+    }
+
+    function pickDefaultMember(members) {
+      const list = members ?? []
+      return list.find((item) => item.name === '我')
+        ?? list.find((item) => item.relation === 'self')
+        ?? list[0]
+        ?? null
     }
 
     // ---------------------------------------------------------------- lean accounts
@@ -1949,17 +1958,6 @@ window.__ModuleLoader__.load({
           const query = selectedId ? `?member=${encodeURIComponent(selectedId)}` : ''
           const body = await getJSON(`${API}/overview${query}`)
           if (!body.ok) { setError(body.error ?? '读取失败'); return }
-          // First visit: prefer the profile that is actively managing physique,
-          // so the CUT MODE hero is the first thing the user sees.
-          if (!selectedId) {
-            const leanMember = (body.members ?? []).find((item) =>
-              (item.goalCodes ?? []).includes('lean_muscle'))
-            if (leanMember && leanMember.id !== body.member?.id) {
-              writeSelectedMember(leanMember.id)
-              setSelectedId(leanMember.id)
-              return
-            }
-          }
           setError(null)
           setData(body)
           // A member deleted elsewhere (or a stale stored selection) resolves to
@@ -1981,16 +1979,15 @@ window.__ModuleLoader__.load({
         return () => clearInterval(timer)
       }, [load])
 
-      // First visit: land on a profile that is actively managing physique, so
-      // the CUT MODE hero is what the user sees instead of the first member tab.
+      // Default to "我" (or the self member). Never auto-jump to another member
+      // just because that member has a goal; other members only appear when the
+      // user has actually added them.
       useEffect(() => {
         if (selectedId) return
-        const members = data?.members ?? []
-        const leanMember = members.find((item) => (item.goalCodes ?? []).includes('lean_muscle'))
-        if (leanMember) {
-          setSelectedId(leanMember.id)
-          writeSelectedMember(leanMember.id)
-        }
+        const preferred = pickDefaultMember(data?.members)
+        if (!preferred) return
+        setSelectedId(preferred.id)
+        writeSelectedMember(preferred.id)
       }, [data, selectedId])
 
       const run = useCallback(async (action, args) => {
@@ -4365,7 +4362,7 @@ window.__ModuleLoader__.load({
       return h(ModalFrame, { title: editing ? '编辑成员' : '添加成员', onClose },
         h('div', { className: 'dshh-field' },
           h('label', { className: 'dshh-field-label' }, '称呼（必填）'),
-          h('input', { className: 'dshh-input', placeholder: '如：爸爸、妈妈、我',
+          h('input', { className: 'dshh-input', placeholder: '如：我',
             value: name, onChange: (e) => setName(e.target.value) }),
         ),
         h('div', { className: 'dshh-field-row' },
