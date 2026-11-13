@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 — 2026-11-13
+
+- The panel always opens on **我** (self); it no longer auto-selects another member just because that member has a goal.
+- Member-name placeholder is neutral (`如：我`); public screenshots show only the default **我** tab, with no other default member labels.
+- Public client module id corrected to `dsh-health-management`; GitHub and tarball installs load the panel reliably.
+
 ## 1.2.0 — 2026-11-13
 
 First public release.
