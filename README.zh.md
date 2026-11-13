@@ -28,15 +28,14 @@
 需要 **DeepSeek Harness `>=0.2.2-rc.1 <0.3.0`** 与 Node.js 22+。
 
 ```sh
-# npm（推荐）
-dsh plugin --profile <profile> add dsh-health-management
-
-# GitHub 源码
+# GitHub 源码（推荐）
 dsh plugin --profile <profile> add github:hebin-cl/dsh-health-management
 
 # Release tarball
 dsh plugin --profile <profile> add ./dsh-health-management.tgz
 ```
+
+本次发布**未发布 npm 包**；GitHub 源码或 Release tarball 是受支持的安装来源。包名保留为 `dsh-health-management`，便于以后发布 npm。
 
 安装后刷新 Web UI；如果宿主提示需要重启，按提示重启。
 
@@ -77,7 +76,7 @@ smoke 使用临时目录，不触碰真实 `.dsh-health/` 数据。
 ## 上架到 DSH 插件市场
 
 - 投稿模板：[`market/awesome-dsh-plugin-entry.yml`](market/awesome-dsh-plugin-entry.yml)。
-- 步骤：创建/推送 GitHub 仓库 → 加 `dsh-plugin` topic →（可选）发布 npm 或上传 Release tarball → fork `awesome-dsh-plugin/awesome-dsh-plugin`，把模板复制为 `data/plugins/<owner>__dsh-health-management.yml`，提 PR。
+- 步骤：创建/推送 GitHub 仓库 → 加 `dsh-plugin` topic → 使用 GitHub 源码或 Release tarball（npm 可选，本次未发布）→ fork `awesome-dsh-plugin/awesome-dsh-plugin`，把 `market/hebin-cl__dsh-health-management.yml` 复制为 `data/plugins/hebin-cl__dsh-health-management.yml`，提 PR。
 - 仓库需创建满 1 天；一个 PR 最多 3 条；描述必须与代码一致。
 - 原生 Discover 索引：仓库已包含 `index.json`（指向初始发布 commit），在 **Plugins → Discover → Index sources** 添加 `https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json` 即可；重写历史或发新 tag 后运行 `node scripts/build-market-index.mjs --owner hebin-cl --source git` 重新生成。
 
