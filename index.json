@@ -1,83 +1,75 @@
 {
-    "format":  1,
-    "title":  {
-                  "en":  "Health Management",
-                  "zh":  "健康管理"
-              },
-    "description":  {
-                        "en":  "Family health records and management goals for DeepSeek Harness.",
-                        "zh":  "DeepSeek Harness 的家庭健康记录与管理目标。"
-                    },
-    "metadata":  {
-                     "categories":  {
-                                        "tools":  {
-                                                      "title":  {
-                                                                    "en":  "Tools",
-                                                                    "zh":  "工具"
-                                                                }
-                                                  }
-                                    },
-                     "labels":  {
-
-                                },
-                     "sortKeys":  {
-
-                                  }
-                 },
-    "plugins":  [
-                    {
-                        "name":  "dsh-health-management",
-                        "title":  {
-                                      "en":  "Health Management",
-                                      "zh":  "健康管理"
-                                  },
-                        "description":  {
-                                            "en":  "Family health records and management goals: metabolic monitoring plus a 12-week lean-muscle account, weekly ledger, body-composition statement, progress photos and health archive. Records only; no diagnosis or medication advice.",
-                                            "zh":  "家庭健康记录与管理目标：代谢指标监测，以及 12 周薄肌账户、周对账、体成分对账单、身材照片与健康档案。仅做记录，不提供诊断或用药建议。"
-                                        },
-                        "icon":  "https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/icon-180.png",
-                        "author":  "hebin-cl",
-                        "homepage":  "https://github.com/hebin-cl/dsh-health-management#readme",
-                        "repository":  {
-                                           "url":  "https://github.com/hebin-cl/dsh-health-management"
-                                       },
-                        "metadata":  {
-                                         "category":  "tools",
-                                         "keywords":  [
-                                                          "dsh",
-                                                          "dsh-plugin",
-                                                          "deepseek-harness",
-                                                          "health",
-                                                          "health-management",
-                                                          "family-health",
-                                                          "fitness",
-                                                          "metabolic",
-                                                          "lean-muscle",
-                                                          "body-composition",
-                                                          "goals",
-                                                          "photos"
-                                                      ],
-                                         "labels":  [
-
-                                                    ],
-                                         "sortKeys":  {
-
-                                                      }
-                                     },
-                        "versions":  [
-                                         {
-                                             "version":  "1.2.0",
-                                             "publishTimestamp":  1794545775,
-                                             "source":  {
-                                                            "type":  "git",
-                                                            "url":  "https://github.com/hebin-cl/dsh-health-management",
-                                                            "commit":  "40fa591ca3629c96cec1ff860b08d66b21c1432d"
-                                                        },
-                                             "engines":  {
-                                                             "dsh":  "\u003e=0.2.2-rc.1 \u003c0.3.0"
-                                                         }
-                                         }
-                                     ]
-                    }
-                ]
+  "format": 1,
+  "title": {
+    "en": "Health Management",
+    "zh": "健康管理"
+  },
+  "description": {
+    "en": "Family health records and management goals for DeepSeek Harness.",
+    "zh": "DeepSeek Harness 的家庭健康记录与管理目标。"
+  },
+  "metadata": {
+    "categories": {
+      "tools": {
+        "title": {
+          "en": "Tools",
+          "zh": "工具"
+        }
+      }
+    },
+    "labels": {},
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "dsh-health-management",
+      "title": {
+        "en": "Health Management",
+        "zh": "健康管理"
+      },
+      "description": {
+        "en": "Family health records and management goals: metabolic monitoring plus a 12-week lean-muscle account, weekly ledger, body-composition statement, progress photos and health archive. Records only; no diagnosis or medication advice.",
+        "zh": "家庭健康记录与管理目标：代谢指标监测，以及 12 周薄肌账户、周对账、体成分对账单、身材照片与健康档案。仅做记录，不提供诊断或用药建议。"
+      },
+      "icon": "https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/icon-180.png",
+      "author": "hebin-cl",
+      "homepage": "https://github.com/hebin-cl/dsh-health-management#readme",
+      "repository": {
+        "url": "https://github.com/hebin-cl/dsh-health-management"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh",
+          "dsh-plugin",
+          "deepseek-harness",
+          "health",
+          "health-management",
+          "family-health",
+          "fitness",
+          "metabolic",
+          "lean-muscle",
+          "body-composition",
+          "goals",
+          "photos"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "1.2.0",
+          "publishTimestamp": 1794545946,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/hebin-cl/dsh-health-management",
+            "commit": "40fa591ca3629c96cec1ff860b08d66b21c1432d"
+          },
+          "engines": {
+            "dsh": ">=0.2.2-rc.1 <0.3.0"
+          }
+        }
+      ]
+    }
+  ]
 }
