@@ -5,8 +5,8 @@
     "zh": "健康管理"
   },
   "description": {
-    "en": "Family health records and management goals for DeepSeek Harness.",
-    "zh": "DeepSeek Harness 的家庭健康记录与管理目标。"
+    "en": "Family health records, a 12-week lean-muscle season, an archive, and a Yuhang venue pilot for DeepSeek Harness.",
+    "zh": "DeepSeek Harness 的家庭健康记录、12 周薄肌赛季、档案与余杭区场馆试点。"
   },
   "metadata": {
     "categories": {
@@ -28,8 +28,8 @@
         "zh": "健康管理"
       },
       "description": {
-        "en": "Family health records and management goals: metabolic monitoring plus a 12-week lean-muscle account, weekly ledger, body-composition statement, progress photos and health archive. Records only; no diagnosis or medication advice.",
-        "zh": "家庭健康记录与管理目标：代谢指标监测，以及 12 周薄肌账户、周对账、体成分对账单、身材照片与健康档案。仅做记录，不提供诊断或用药建议。"
+        "en": "Family health workspace: overview, a 12-week lean-muscle season, archive for trends/photos/medical documents, and Discover with a Hangzhou Yuhang venue pilot. Includes a local-only invite squad MVP. Records only; no diagnosis or medication advice.",
+        "zh": "家庭健康工作台：概览、12 周薄肌赛季、趋势/照片/病历档案，以及带杭州余杭区场馆试点的发现页；含本地邀请制小队 MVP。仅做记录，不提供诊断或用药建议。"
       },
       "icon": "https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/icon-180.png",
       "author": "hebin-cl",
@@ -58,12 +58,12 @@
       },
       "versions": [
         {
-          "version": "1.2.1",
-          "publishTimestamp": 1794546325,
+          "version": "1.3.0",
+          "publishTimestamp": 1794627031,
           "source": {
             "type": "git",
             "url": "https://github.com/hebin-cl/dsh-health-management",
-            "commit": "b2659fec3d72db20d37eef972da4331529fff85f"
+            "commit": "b8eabdfac8ae375995989aa22b3e5ef268a10a08"
           },
           "engines": {
             "dsh": ">=0.2.2-rc.1 <0.3.0"
