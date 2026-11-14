@@ -13,6 +13,8 @@ import { mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HealthService, MAX_MEMBERS, normalizeTimestamp } from '../lib/service.js'
+import { CommunityStore } from '../lib/community.js'
+import { VENUE_REGION, YUYANG_VENUES } from '../lib/venues.js'
 import { METRICS, evaluate, resolveBand } from '../lib/metrics.js'
 import { suggestConditions, resolveTargets, conditionOf } from '../lib/conditions.js'
 
@@ -737,7 +739,7 @@ check('season review byAccount mirrors the accounts',
     const account = reviewNow.accounts.find((item) => item.code === row.code)
     return account && row.deposits === account.season.deposits
       && row.max === account.season.max && row.rate === account.season.rate
-      && row.label === `${row.deposits}/${row.max} 格`
+      && row.label === `${row.deposits} 笔`
   }), seasonReview.byAccount)
 check('season review deposits add up',
   seasonReview.deposits === seasonReview.byAccount.reduce((sum, row) => sum + row.deposits, 0)
@@ -932,6 +934,54 @@ check('data survives reload', (await reopened.listMembers()).length === MAX_MEMB
 const reopenedGoals = await reopened.goalOverview('成员B')
 check('goal bindings survive reload', reopenedGoals.ok && reopenedGoals.goals.some((g) => g.code === 'lean_muscle'))
 check('goals document is tracked', reopened.dataPaths.goals.endsWith('goals.json'))
+
+console.log('\n[venue pilot]')
+check('venue pilot has at least 8 venues', YUYANG_VENUES.length >= 8, YUYANG_VENUES.length)
+check('venue ids are unique',
+  new Set(YUYANG_VENUES.map((venue) => venue.id)).size === YUYANG_VENUES.length)
+check('venues keep address and public source',
+  YUYANG_VENUES.every((venue) => venue.address && venue.source?.url && venue.source?.date),
+  YUYANG_VENUES.map((venue) => venue.id))
+check('venue region is the Yuhang pilot',
+  VENUE_REGION.id === 'hangzhou-yuhang' && VENUE_REGION.pilot === true, VENUE_REGION)
+
+console.log('\n[community preview]')
+const communityDir = await mkdtemp(join(tmpdir(), 'dsh-health-community-'))
+const community = new CommunityStore(join(communityDir, 'community.json'))
+const createdSquad = await community.create({
+  alias: '我',
+  snapshot: {
+    seasonNumber: 1,
+    week: 3,
+    deposits: { training: 2, protein: 5, sleep: 6, water: 7 },
+    streak: 9,
+    bodyfat: 18,
+    name: 'should not be stored',
+  },
+})
+check('squad created with invite code', createdSquad.ok && /^[A-Z2-9]{6}$/.test(createdSquad.data.code), createdSquad)
+const joinedSquad = await community.join({
+  code: createdSquad.data.code,
+  alias: '队友',
+  snapshot: { seasonNumber: 1, week: 3, deposits: { training: 3, protein: 4, sleep: 5, water: 6 }, streak: 4 },
+})
+check('second member joins squad', joinedSquad.ok && joinedSquad.data.squad.memberCount === 2, joinedSquad)
+const squadBoard = await community.leaderboard({ code: createdSquad.data.code })
+check('squad leaderboard sorts by behaviour total',
+  squadBoard.ok && squadBoard.data.members[0].total >= squadBoard.data.members[1].total, squadBoard)
+check('squad snapshot strips body/name fields',
+  squadBoard.ok && !('bodyfat' in squadBoard.data.members[0].snapshot)
+  && !('name' in squadBoard.data.members[0].snapshot), squadBoard)
+const updatedSquad = await community.updateSnapshot({
+  code: createdSquad.data.code,
+  token: createdSquad.data.token,
+  snapshot: { seasonNumber: 1, week: 3, deposits: { training: 4, protein: 5, sleep: 6, water: 7 }, streak: 10 },
+})
+check('squad snapshot update', updatedSquad.ok
+  && updatedSquad.data.members.some((member) => member.snapshot.streak === 10), updatedSquad)
+const leftSquad = await community.leave({ code: createdSquad.data.code, token: joinedSquad.data.token })
+check('squad leave removes the member', leftSquad.ok && leftSquad.data.remaining === 1, leftSquad)
+await rm(communityDir, { recursive: true, force: true })
 
 await rm(dir, { recursive: true, force: true })
 const totalChecks = passes + failures
