@@ -8,9 +8,22 @@ A family health workspace for **DeepSeek Harness**: record measurements, manage 
 
 The flagship view is **Lean Account / 薄肌账户**: four behaviour accounts (training, protein, sleep, water), a 12-week season, a weekly ledger, and a body-composition statement that is **observation-only**. The plugin also ships a metabolic monitoring view, progress photos, a health archive, and agent tools for the same data.
 
+## What's new in 1.3.0
+
+- **Four focused tabs**: 概览 / 赛季 / 档案 / 发现.
+- **Season** is now its own section: hero, W4/W8/W12 checkpoints, weekly ledger, share card and squad entry.
+- **Archive** is the single home for **trends, photos and medical documents**, with counts and quick actions.
+- **Discover** ships a **Hangzhou Yuhang district pilot** with 10 public venues, search, filters, source links and local favourites — with open hours/fees marked "check on site".
+- **Local squad MVP**: invite-only behaviour leaderboard, opt-in, local-only; no remote service yet.
+- **Clear unit**: deposits are measured in **笔** (one account's one daily deposit); season time is **周**.
+
+The squad and venue data are MVP/pilot features and are labelled as such in the UI. The squad store is local (`community.json`); venue data is curated from public sources and may change.
+
 > Records and descriptive statistics only. Not a medical device. No diagnosis, treatment, medication, training-plan, recipe, or supplement advice. Reference ranges are population references, not personal targets. Always follow a clinician's advice.
 
 ![Overview](assets/screenshots/01-overview.png)
+
+> The screenshot shows the visual system from the 1.2 baseline; 1.3 adds the season, archive and discover tabs. Updated captures will follow.
 
 ## Features
 
@@ -63,14 +76,17 @@ After install, refresh the Web UI (or restart the host if the profile asks for i
 1. Open **Health Management** in the sidebar.
 2. Add a member (or use the seeded “我”).
 3. Set a goal: **代谢综合征管理** or **薄肌管理**.
-4. For 薄肌: use **今日存入** for training/protein/sleep/water, **每日一拍** for a photo, and **本周对账单** to see the 7×4 grid. The season card shows checkpoints W4/W8/W12.
-5. Use the top-bar **目标** to activate/pause a goal or set personal target values. Goal settings are intentionally not repeated as a card on the lean dashboard.
+4. For 薄肌: use **今日存入** for training/protein/sleep/water, **每日一拍** for a photo, and **本周对账单** to see the 7×4 grid. Open **赛季** for checkpoints W4/W8/W12, share card and squad.
+5. Use **档案** for trends, photos and medical documents; **发现** for the Yuhang venue pilot and future services.
+6. Use the top-bar **目标** to activate/pause a goal or set personal target values. Goal settings are intentionally not repeated as a card on the lean dashboard.
 
 ## Data and privacy
 
 - Data is stored locally in `.dsh-health/` under the Harness working directory (or the configured `dataDir`): `members.json`, `records.json`, `conditions.json`, `documents.json`, `goals.json`, `photos.json`, and `photos/<memberId>/`.
 - Photos are served by a same-origin route, validated as JPEG/PNG/WebP, and never uploaded to a cloud service. Deleting a photo deletes its file and metadata.
-- No analytics, no telemetry, no network calls from the plugin.
+- No analytics, no telemetry, and no external network calls. The panel only talks to same-origin Host routes on this machine.
+- The local squad MVP stores `community.json` next to the health data; it never leaves the machine. The invite-code copy uses a local Windows clipboard bridge.
+- Venue data is a curated Yuhang pilot from public sources, served by the local Host; it is not a live booking API.
 - Back up `.dsh-health/` to keep your data; deleting a member cascades their records, goals, photos and archive.
 
 ## Safety boundaries
@@ -102,6 +118,8 @@ client.js             Web panel (dark dashboard, Lean Account, photos, archive)
 lib/metrics.js        Metric registry and reference bands
 lib/goals.js          Goal catalog + engine (accounts, season, ledger, statement)
 lib/service.js        Storage and domain operations
+lib/community.js      Local squad MVP store (invite-only, local-only)
+lib/venues.js         Curated Hangzhou Yuhang venue pilot
 lib/conditions.js     Condition tags and clinical target gaps
 lib/store.js          Atomic JSON store
 test/smoke.mjs        End-to-end service tests
