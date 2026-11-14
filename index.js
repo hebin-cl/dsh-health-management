@@ -7,6 +7,7 @@
  */
 
 import { readFile, stat } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -23,6 +24,8 @@ import {
 import { METRICS } from './lib/metrics.js'
 import { conditionCodes } from './lib/conditions.js'
 import { GOALS, GOAL_SOURCES, GOAL_STATUSES, goalCodes } from './lib/goals.js'
+import { CommunityStore } from './lib/community.js'
+import { VENUE_REGION, YUYANG_VENUES } from './lib/venues.js'
 
 export const name = 'dsh-health-management'
 export const inject = ['tools', 'systemPrompt', 'webServer', 'workingDirectory']
@@ -47,6 +50,9 @@ export function apply(ctx, config) {
     : join(ctx.workingDirectory?.defaultDirectory ?? process.cwd(), '.dsh-health')
 
   const service = new HealthService(baseDir)
+  // Local preview of the invite-only squad service. Same API shape as the
+  // future remote service; only aggregate behaviour snapshots are stored.
+  const community = new CommunityStore(join(baseDir, 'community.json'))
 
   // Report what the profile actually mounts, so the storage decision is based
   // on evidence rather than on the config directory's `absent` status.
@@ -100,7 +106,7 @@ export function apply(ctx, config) {
         '- 描述数据的变化趋势与波动。',
         '- 指出某项指标高于或低于参考区间，并说明参考区间的来源。',
         '- 展示管理目标的目标值、当前值、差距与记录覆盖度（描述性统计）。',
-        '- 展示薄肌账户的存入格数、周对账、赛季结算等描述性统计。',
+        '- 展示薄肌账户的存入笔数、周对账、赛季结算等描述性统计。',
         '- 建议用户携带这些数据去咨询医生。',
         '',
         '**归属规则：** 记录数据时必须确认属于哪位家庭成员。家庭成员多于一位而用户未指明时，必须先询问，绝不能自行猜测归属。',
@@ -398,7 +404,7 @@ export function apply(ctx, config) {
     ctx.tools.register(tool({
       name: 'health_goal_review',
       description:
-        '查看某成员管理目标的赛季 / 周报 / 体成分对账单（薄肌账户）。只返回描述性统计：存入格数、训练天数、照片与记录天数、体成分基线与变化；不做效果判断，不构成诊断、训练或营养建议。',
+        '查看某成员管理目标的赛季 / 周报 / 体成分对账单（薄肌账户）。只返回描述性统计：存入笔数、训练天数、照片与记录天数、体成分基线与变化；不做效果判断，不构成诊断、训练或营养建议。',
       parameters: {
         type: 'object',
         properties: {
@@ -720,13 +726,91 @@ export function apply(ctx, config) {
   )
 
   ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: '/api/dsh-health/venues',
+      resource: async () => json({
+        ok: true,
+        data: { region: VENUE_REGION, venues: YUYANG_VENUES },
+      }),
+    }),
+  )
+
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: '/api/dsh-health/clipboard',
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          writeJson(res, 405, { ok: false, error: '只接受 POST。' })
+          return
+        }
+        try {
+          const raw = await readBody(req)
+          const body = raw ? JSON.parse(raw) : {}
+          const text = String(body?.text ?? '').trim().toUpperCase()
+          if (!/^[A-Z2-9]{6}$/.test(text)) {
+            writeJson(res, 400, { ok: false, error: '只允许复制 6 位小队邀请码。' })
+            return
+          }
+          await copyToSystemClipboard(text)
+          writeJson(res, 200, { ok: true })
+        } catch (error) {
+          writeJson(res, 500, { ok: false, error: String(error?.message ?? error) })
+        }
+      },
+    }),
+  )
+
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: '/api/dsh-health/community/leaderboard',
+      resource: async (request) => {
+        await ready
+        const url = new URL(request.url, 'http://localhost')
+        const code = url.searchParams.get('code') ?? ''
+        return json(await community.leaderboard({ code }))
+      },
+    }),
+  )
+
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: '/api/dsh-health/community',
+      handler: async (req, res) => {
+        await ready
+        if (req.method !== 'POST') {
+          writeJson(res, 405, { ok: false, error: '只接受 POST。' })
+          return
+        }
+        try {
+          const raw = await readBody(req)
+          const body = raw ? JSON.parse(raw) : {}
+          const { action, alias, code, token, snapshot } = body ?? {}
+          let result
+          if (action === 'create') result = await community.create({ alias, snapshot })
+          else if (action === 'join') result = await community.join({ code, alias, snapshot })
+          else if (action === 'snapshot') result = await community.updateSnapshot({ code, token, snapshot })
+          else if (action === 'leave') result = await community.leave({ code, token })
+          else result = { ok: false, error: `未知操作「${action}」。` }
+          writeJson(res, 200, result)
+        } catch (error) {
+          writeJson(res, 400, { ok: false, error: String(error?.message ?? error) })
+        }
+      },
+    }),
+  )
+
+  ctx.effect(() =>
     ctx.tools.register(tool({
       name: 'health_diagnose',
       description: '诊断用：报告健康数据的存储位置，以及当前 profile 的存储服务挂载情况。',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
       execute: async () => ({
         ok: true,
-        dataPaths: service.dataPaths,
+        dataPaths: { ...service.dataPaths, community: join(baseDir, 'community.json') },
         storage: storageProbe,
       }),
     })),
@@ -775,6 +859,38 @@ async function runAction(service, action, args) {
     default:
       return { ok: false, error: `未知操作「${action}」。` }
   }
+}
+
+/** Windows-local clipboard bridge for the invite-code copy button. */
+function copyToSystemClipboard(text) {
+  return new Promise((resolve, reject) => {
+    if (process.platform !== 'win32') {
+      reject(new Error('本机剪贴板复制仅支持 Windows 预览环境。'))
+      return
+    }
+    const child = spawn('clip.exe', [], {
+      stdio: ['pipe', 'ignore', 'ignore'],
+      windowsHide: true,
+    })
+    let settled = false
+    const finish = (error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      if (error) reject(error)
+      else resolve()
+    }
+    const timer = setTimeout(() => {
+      try { child.kill() } catch { /* ignore */ }
+      finish(new Error('复制超时。'))
+    }, 2500)
+    child.on('error', (error) => finish(error))
+    child.on('close', (code) => {
+      if (code === 0) finish(null)
+      else finish(new Error(`clip.exe 退出码 ${code}`))
+    })
+    child.stdin.end(text, 'utf8')
+  })
 }
 
 /** Minimal JSON response helper for the panel routes. */
