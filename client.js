@@ -34,9 +34,9 @@ window.__ModuleLoader__.load({
 
     const TABS = [
       { code: 'overview', name: '概览' },
-      { code: 'trends', name: '趋势' },
-      { code: 'photos', name: '照片' },
+      { code: 'season', name: '赛季' },
       { code: 'archive', name: '档案' },
+      { code: 'discover', name: '发现' },
     ]
 
     const RECORDS_SHOWN = 8
@@ -880,6 +880,146 @@ window.__ModuleLoader__.load({
   .dshh-hero-sub { font-size:11.5px; }
 }
 
+  .dshh-brandline { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+  .dshh-preview-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .dshh-preview-tag { display:inline-flex; align-items:center; border-radius:999px; padding:3px 9px;
+    background:#D7FF3F; color:#0B0D12; font-size:10px; font-weight:750; letter-spacing:.08em; }
+  .dshh-share-preview { display:flex; justify-content:center; padding:8px;
+    border:1px solid var(--dsw-alias-border-l1); border-radius:16px; background:#080A0E; }
+  .dshh-share-canvas { display:block; width:min(100%,340px); height:auto; border-radius:12px; }
+  .dshh-consent { border:1px solid var(--dsw-alias-border-l1); border-radius:14px;
+    background:rgba(255,255,255,.025); padding:12px; margin:12px 0; }
+  .dshh-consent-head { font-size:13px; font-weight:650; margin-bottom:8px; }
+  .dshh-consent-cols { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .dshh-consent-cols ul { margin:4px 0 0; padding-left:16px; font-size:11.5px;
+    color:var(--dsw-alias-label-secondary); line-height:1.7; }
+  .dshh-consent-label { font-size:11px; font-weight:700; color:var(--dsw-alias-brand-primary); }
+  .dshh-checkline { display:flex; align-items:flex-start; gap:8px; margin-top:10px;
+    font-size:11.5px; color:var(--dsw-alias-label-primary); cursor:pointer; }
+  .dshh-checkline input { margin-top:2px; accent-color:var(--dsw-alias-brand-primary); }
+  .dshh-form-error { border:1px solid rgba(255,107,107,.45); background:rgba(255,107,107,.08);
+    color:#FF9B9B; border-radius:10px; padding:8px 10px; font-size:11.5px; margin:8px 0; }
+  .dshh-squad-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .dshh-squad-title { font-size:14px; font-weight:700; letter-spacing:.02em; }
+  .dshh-squad-list { display:flex; flex-direction:column; gap:8px; margin:12px 0; }
+  .dshh-squad-row { display:grid; grid-template-columns:34px minmax(0,1fr) auto;
+    gap:6px 8px; align-items:center; padding:10px 11px; border-radius:12px;
+    border:1px solid var(--dsw-alias-border-l1); background:rgba(255,255,255,.025); }
+  .dshh-squad-row[data-self='true'] { border-color:rgba(215,255,63,.45);
+    background:linear-gradient(180deg,rgba(215,255,63,.07),rgba(215,255,63,.02)); }
+  .dshh-squad-rank { color:var(--dsw-alias-label-secondary); font-size:11px; font-variant-numeric:tabular-nums; }
+  .dshh-squad-person { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .dshh-squad-name { font-size:12px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dshh-squad-total { font-size:14px; font-weight:750; color:var(--dsw-alias-brand-primary);
+    font-variant-numeric:tabular-nums; }
+  .dshh-squad-cells { grid-column:2 / 4; display:flex; flex-wrap:wrap; gap:5px; }
+  .dshh-squad-cell { font-size:10px; color:var(--dsw-alias-label-secondary);
+    border:1px solid var(--dsw-alias-border-l1); border-radius:999px; padding:2px 7px; }
+  .dshh-squad-note { font-size:11px; color:var(--dsw-alias-label-secondary); line-height:1.65;
+    border-top:1px dashed var(--dsw-alias-border-l1); padding-top:8px; }
+  .dshh-squad-empty { font-size:11.5px; color:var(--dsw-alias-label-secondary); padding:16px 4px; }
+  .dshh-placelinks { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+  .dshh-placefilters { display:flex; flex-wrap:wrap; gap:7px; margin:4px 0 10px; }
+  .dshh-place-search { margin:10px 0 2px; }
+  .dshh-place-source { color:var(--dsw-alias-label-secondary); font-size:10px; line-height:1.5; }
+  .dshh-place-source a { color:var(--dsw-alias-brand-primary); text-decoration:none; }
+  .dshh-placefilter { border:1px solid var(--dsw-alias-border-l1); background:transparent;
+    color:var(--dsw-alias-label-secondary); border-radius:999px; padding:4px 11px; font-size:11px;
+    cursor:pointer; }
+  .dshh-placefilter[data-active='true'] { border-color:var(--dsw-alias-brand-primary);
+    color:var(--dsw-alias-brand-primary); background:rgba(215,255,63,.07); }
+  .dshh-placegrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:12px 0; }
+  .dshh-placecard { border:1px solid var(--dsw-alias-border-l1); border-radius:14px;
+    background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
+    padding:12px; display:flex; flex-direction:column; gap:9px; }
+  .dshh-placehead { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .dshh-placename { font-size:13px; font-weight:700; }
+  .dshh-placefee { font-size:10px; color:var(--dsw-alias-brand-primary);
+    border:1px solid rgba(215,255,63,.3); border-radius:999px; padding:2px 7px; white-space:nowrap; }
+  .dshh-placetags { display:flex; flex-wrap:wrap; gap:5px; }
+  .dshh-placetag { font-size:10px; color:var(--dsw-alias-label-secondary);
+    background:rgba(255,255,255,.04); border-radius:6px; padding:2px 6px; }
+  .dshh-placemeta { display:flex; flex-direction:column; gap:2px; font-size:10.5px;
+    color:var(--dsw-alias-label-secondary); }
+  .dshh-placeactions { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; }
+  @media (max-width:720px) {
+    .dshh-placegrid, .dshh-consent-cols { grid-template-columns:1fr; }
+  }
+
+  .dshh-seasonpane { display:flex; flex-direction:column; gap:14px; }
+  .dshh-seasonhero { position:relative; overflow:hidden; border:1px solid rgba(215,255,63,.20);
+    border-radius:20px; padding:20px; background:#141821;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 0 32px rgba(215,255,63,.045); }
+  .dshh-seasonhero > * { position:relative; z-index:1; }
+  .dshh-seasonhero-top { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .dshh-season-kicker { font-size:10px; letter-spacing:.18em; font-weight:800; color:#D7FF3F; }
+  .dshh-season-status { font-size:10.5px; color:#B6BECC; border:1px solid rgba(255,255,255,.14);
+    border-radius:999px; padding:3px 9px; }
+  .dshh-seasonhero-title { margin:12px 0 5px; font-size:28px; letter-spacing:-.025em; line-height:1.15; }
+  .dshh-seasonhero-sub { margin:0; max-width:620px; font-size:12px; color:#9AA3B2; line-height:1.7; }
+  .dshh-seasonhero-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:18px 0 14px; }
+  .dshh-seasonhero-stat { display:flex; flex-direction:column; gap:2px; border-left:2px solid rgba(215,255,63,.28); padding-left:10px; }
+  .dshh-seasonhero-stat b { font-size:22px; line-height:1.1; color:#F2F4F8; font-variant-numeric:tabular-nums; }
+  .dshh-seasonhero-stat span { font-size:10px; color:#8C94A3; }
+  .dshh-seasonprogress { position:relative; height:8px; border-radius:999px; background:rgba(255,255,255,.08); margin:8px 0 4px; }
+  .dshh-seasonprogress-fill { height:100%; border-radius:999px; background:#D7FF3F; }
+  .dshh-seasonprogress-label { position:absolute; right:0; top:-18px; font-size:10px; color:#B6BECC; }
+  .dshh-seasonhero-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:18px; }
+  .dshh-seasontimeline { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
+  .dshh-seasontimeline-step { display:flex; flex-direction:column; gap:3px; padding:12px;
+    border:1px solid var(--dsw-alias-border-l1); border-radius:12px; background:rgba(255,255,255,.025); }
+  .dshh-seasontimeline-step[data-reached='true'] { border-color:rgba(215,255,63,.40);
+    background:rgba(215,255,63,.07); }
+  .dshh-seasontimeline-dot { width:22px; height:22px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:11px; color:#0B0D12; background:rgba(255,255,255,.14); }
+  .dshh-seasontimeline-step[data-reached='true'] .dshh-seasontimeline-dot { background:#D7FF3F; }
+  .dshh-seasontimeline-step b { font-size:13px; }
+  .dshh-seasontimeline-step small { font-size:10px; color:#8C94A3; }
+  .dshh-seasonrules ul { margin:8px 0 0; padding-left:18px; font-size:11.5px;
+    color:var(--dsw-alias-label-secondary); line-height:1.8; }
+  .dshh-season-empty { padding:22px; }
+  .dshh-discover-hero { background:#141821; }
+  .dshh-discovertiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:14px 0 8px; }
+  .dshh-discovertile { display:flex; flex-direction:column; gap:5px; text-align:left; padding:12px;
+    border:1px solid var(--dsw-alias-border-l1); border-radius:14px; background:rgba(255,255,255,.025);
+    color:var(--dsw-alias-label-primary); text-decoration:none; cursor:pointer; font:inherit; }
+  .dshh-discovertile:hover { border-color:rgba(215,255,63,.40); background:rgba(215,255,63,.04); }
+  .dshh-discovertile[data-disabled='true'] { opacity:.48; cursor:default; }
+  .dshh-discovertile-title { font-size:12px; font-weight:700; }
+  .dshh-discovertile-desc { font-size:10.5px; color:var(--dsw-alias-label-secondary); line-height:1.55; }
+  .dshh-discovertile-cta { margin-top:auto; padding-top:6px; font-size:10px; font-weight:650; color:var(--dsw-alias-brand-primary); }
+  .dshh-discover-note { font-size:10.5px; color:var(--dsw-alias-label-secondary); line-height:1.6; }
+  .dshh-root .dshh-tabbar { flex-wrap:wrap; row-gap:4px; }
+  @media (max-width:720px) {
+    .dshh-seasonhero-stats, .dshh-seasontimeline { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .dshh-discovertiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+
+  .dshh-archivehub { display:flex; flex-direction:column; gap:14px; }
+  .dshh-archivehead { background:#141821; }
+  .dshh-archive-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px; margin:12px 0; }
+  .dshh-archive-stat { display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+    text-align:left; border:1px solid var(--dsw-alias-border-l1); border-radius:12px;
+    background:rgba(255,255,255,.025); color:var(--dsw-alias-label-primary);
+    padding:10px 11px; font:inherit; cursor:pointer; }
+  .dshh-archive-stat:hover { border-color:rgba(215,255,63,.35); background:rgba(215,255,63,.04); }
+  .dshh-archive-stat b { font-size:20px; line-height:1.1; font-variant-numeric:tabular-nums; }
+  .dshh-archive-stat span { font-size:10px; color:var(--dsw-alias-label-secondary); }
+  .dshh-archive-actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .dshh-archivenav { display:flex; flex-wrap:wrap; gap:8px; padding:4px 0 0;
+    border-bottom:1px solid var(--dsw-alias-border-l1); }
+  .dshh-archivenav-btn { display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+    border:none; background:transparent; color:var(--dsw-alias-label-secondary);
+    padding:8px 12px 10px; font:inherit; cursor:pointer; border-bottom:2px solid transparent; }
+  .dshh-archivenav-btn span { font-size:13px; font-weight:650; }
+  .dshh-archivenav-btn small { font-size:10px; opacity:.75; }
+  .dshh-archivenav-btn[data-active='true'] { color:var(--dsw-alias-brand-primary);
+    border-bottom-color:var(--dsw-alias-brand-primary); }
+  @media (max-width:720px) {
+    .dshh-archive-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+
 @keyframes dshhRise {
   from { opacity:0; transform:translateY(8px); }
   to { opacity:1; transform:none; }
@@ -1298,6 +1438,67 @@ window.__ModuleLoader__.load({
         ?? null
     }
 
+    // ---------------------------------------------------------------- preview: squad / places
+
+    const SQUAD_MEMBERSHIP_KEY = 'dsh-health.squad.v1'
+    const PLACE_FAVORITES_KEY = 'dsh-health.places.v1'
+    const SQUAD_ACCOUNTS = [
+      { code: 'training', name: '大练' },
+      { code: 'protein', name: '蛋白' },
+      { code: 'sleep', name: '大睡' },
+      { code: 'water', name: '大水' },
+    ]
+
+    function readLocalJSON(key, fallback) {
+      try {
+        const raw = window.localStorage?.getItem(key)
+        return raw ? JSON.parse(raw) : fallback
+      } catch {
+        return fallback
+      }
+    }
+
+    function writeLocalJSON(key, value) {
+      try {
+        if (value === null || value === undefined) window.localStorage?.removeItem(key)
+        else window.localStorage?.setItem(key, JSON.stringify(value))
+      } catch {
+        // ignore: storage unavailable
+      }
+    }
+
+    /** Aggregate behaviour snapshot only; never body-composition or notes. */
+    function squadSnapshot(goal, { recent = [], photos = [] } = {}) {
+      const season = seasonMeta(goal)
+      const deposits = { training: 0, protein: 0, sleep: 0, water: 0 }
+      for (const account of leanAccounts(goal)) {
+        const code = SQUAD_ACCOUNTS.some((item) => item.code === account?.metric)
+          ? account.metric
+          : account?.code
+        if (!(code in deposits)) continue
+        const met = Number(account?.week?.met)
+        deposits[code] = Math.max(0, Math.min(7, Number.isFinite(met) ? met : 0))
+      }
+      return {
+        seasonId: String(goal?.season?.id ?? goal?.season?.startedAt ?? 'local').slice(0, 64),
+        seasonNumber: Number(season.no) || 1,
+        week: Math.max(1, Math.min(12, Number(season.week) || 1)),
+        deposits,
+        streak: recordStreak({ recent, photos }),
+      }
+    }
+
+    function shareAliasOf(member) {
+      return member?.relation === 'self' ? '我' : '家人'
+    }
+
+    function mapSearchUrl(provider, keyword) {
+      const query = encodeURIComponent(keyword)
+      if (provider === 'baidu') return `https://map.baidu.com/search?query=${query}`
+      if (provider === 'google') return `https://www.google.com/maps/search/?api=1&query=${query}`
+      return `https://uri.amap.com/search?keyword=${query}&callnative=1`
+    }
+
     // ---------------------------------------------------------------- lean accounts
 
     const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
@@ -1507,14 +1708,9 @@ window.__ModuleLoader__.load({
     /** Clipboard with a hidden-textarea fallback for older webviews. */
     async function leanCopyText(text) {
       const value = String(text ?? '')
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(value)
-          return true
-        }
-      } catch (error) {
-        // fall through to the textarea path
-      }
+      // Run the synchronous textarea path first so the user activation from
+      // the click is still alive. Clipboard API failures often arrive after
+      // activation has expired, which made the old fallback unreliable.
       try {
         const area = document.createElement('textarea')
         area.value = value
@@ -1523,15 +1719,46 @@ window.__ModuleLoader__.load({
         area.style.top = '-1000px'
         area.style.opacity = '0'
         document.body.appendChild(area)
+        area.focus()
         area.select()
         const ok = typeof document.execCommand === 'function'
           ? document.execCommand('copy')
           : false
         document.body.removeChild(area)
-        return Boolean(ok)
+        if (ok) return true
       } catch (error) {
-        return false
+        // fall through
       }
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(value)
+          return true
+        }
+      } catch (error) {
+        // fall through
+      }
+      return false
+    }
+
+    /** Copy an ASCII invite code through the Host clipboard first. */
+    async function copyInviteCode(code) {
+      const text = String(code ?? '')
+      if (!text) return false
+      // On the local Windows preview the Host bridge is the reliable path:
+      // the embedded WebView may block navigator.clipboard entirely.
+      try {
+        const response = await fetch(`${API}/clipboard`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text }),
+        })
+        const body = await response.json().catch(() => ({}))
+        if (body?.ok) return true
+      } catch {
+        // fall through to the browser paths
+      }
+      return leanCopyText(text)
     }
 
     function weeklyReviewText({ memberName, goal, accounts, totals }) {
@@ -1542,7 +1769,7 @@ window.__ModuleLoader__.load({
       if (totals.start || totals.end) {
         lines.push(`近 7 天：${totals.start ?? '—'} 至 ${totals.end ?? '—'}`)
       }
-      lines.push(`已存入：${totals.deposits}/${totals.max} 格 · 存入率 ${fmtPercent(
+      lines.push(`已存入：${totals.deposits}/${totals.max} 笔 · 完成度 ${fmtPercent(
         totals.max > 0 ? totals.deposits / totals.max : null)}`)
       for (const account of accounts) {
         const week = account?.week ?? {}
@@ -1569,7 +1796,7 @@ window.__ModuleLoader__.load({
               deposits: stat.deposits ?? 0,
               max: stat.max ?? 0,
               rate: stat.rate ?? null,
-              label: stat.label ?? `${stat.deposits ?? 0}/${stat.max ?? 0} 格`,
+              label: stat.label ?? `${stat.deposits ?? 0}/${stat.max ?? 0} 笔`,
             }
           })
       const body = Array.isArray(review?.body) && review.body.length > 0
@@ -1618,9 +1845,9 @@ window.__ModuleLoader__.load({
       const lines = [`薄肌账户 · ${review.ended ? '赛季结算' : '赛季预览'}`]
       if (memberName) lines.push(`成员：${memberName}`)
       lines.push(`赛季：第 ${review.week}/${review.weeks} 周 · 已过 ${review.days} 天`)
-      lines.push(`存入：${review.deposits}/${review.max} 格 · 存入率 ${fmtPercent(review.rate)}`)
+      lines.push(`累计存入：${review.deposits} 笔（截至第 ${review.week} 周）`)
       for (const item of review.byAccount ?? []) {
-        const label = item?.label ?? `${item?.deposits ?? 0}/${item?.max ?? 0} 格`
+        const label = `${item?.deposits ?? 0} 笔`
         lines.push(`${item?.name ?? '账户'}：${label}`)
       }
       if (review.trainingDays != null) {
@@ -1933,6 +2160,47 @@ window.__ModuleLoader__.load({
     }
 
     // ---------------------------------------------------------------- panel
+    class PaneBoundary extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = { error: null }
+      }
+
+      static getDerivedStateFromError(error) {
+        return { error }
+      }
+
+      componentDidCatch(error, info) {
+        try {
+          window.__dshHealthLastError = {
+            message: String(error?.message ?? error),
+            stack: String(error?.stack ?? ''),
+            componentStack: String(info?.componentStack ?? ''),
+          }
+        } catch {
+          // ignore
+        }
+        console.error('[dsh-health] pane error', error, info)
+      }
+
+      render() {
+        if (this.state.error) {
+          return h('div', { className: 'dshh-root' }, h(Styles),
+            h('div', { className: 'dshh-body' },
+              h('div', { className: 'dshh-card dshh-empty' },
+                h('div', { className: 'dshh-empty-title' }, '这个页面加载失败'),
+                h('div', { className: 'dshh-muted dshh-small' },
+                  String(this.state.error?.message ?? this.state.error)),
+                h('div', { className: 'dshh-modal-actions' },
+                  h('button', {
+                    type: 'button', className: 'dshh-btn dshh-btn-primary',
+                    onClick: this.props.onReset,
+                  }, '返回概览')))))
+        }
+        return this.props.children
+      }
+    }
+
     function HealthPanel() {
       const [data, setData] = useState(null)
       const [error, setError] = useState(null)
@@ -1940,6 +2208,7 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState(false)
       const [modal, setModal] = useState(null) // null | {kind, ...}
       const [tab, setTab] = useState('overview')
+      const [archiveSection, setArchiveSection] = useState('trends')
       const [toast, setToast] = useState(null)
       const toastTimer = useRef(null)
 
@@ -2111,7 +2380,8 @@ window.__ModuleLoader__.load({
       const openPhoto = (photo) => setModal({ kind: 'photoView', photo })
       const openPhotoCompare = (a, b) => setModal({ kind: 'photoCompare', photos: [a, b] })
       const openPhotosTab = (photo) => {
-        setTab('photos')
+        setArchiveSection('photos')
+        setTab('archive')
         if (photo) setModal({ kind: 'photoView', photo })
       }
 
@@ -2171,29 +2441,50 @@ window.__ModuleLoader__.load({
             onOpenSeason: openSeason,
             onStartSeason: startSeason,
             onOpenHandbook: openHandbook,
+            onShareSeason: () => setModal({ kind: 'shareSeason' }),
+            onOpenSquad: () => setModal({ kind: 'squad' }),
           }),
-          tab === 'trends' && h(TrendsPane, {
-            series: data.series, goalCodes, catalogs,
-            onMetricClick: (code) => setModal({ kind: 'metric', code }),
-            onRecord: openEntry,
-          }),
-          tab === 'photos' && h(PhotosPane, {
-            member, photos, photoError,
-            season: leanGoal?.season ?? null,
-            onCapture: () => openPhotoCapture('progress'),
-            onCaptureInspiration: () => openPhotoCapture('inspiration'),
-            onView: openPhoto,
-            onCompare: openPhotoCompare,
-            onRemovePhoto: removePhoto,
-          }),
-          tab === 'archive' && h(ArchivePane, {
-            member, data, catalogs,
-            onAddDocument: () => setModal({ kind: 'document' }),
-            onRemoveDocument: removeDocument,
-            onRemoveCondition: removeCondition,
-            onAddCondition: addCondition,
-            onManageConditions: () => setModal({ kind: 'condition', member }),
-          }),
+          tab === 'season' && h(PaneBoundary, { onReset: () => setTab('overview') },
+            h(SeasonPane, {
+              member,
+              data,
+              goal: leanGoal,
+              goals,
+              recent: data.recent ?? [],
+              photos,
+              onOpenSeason: openSeason,
+              onStartSeason: startSeason,
+              onOpenHandbook: openHandbook,
+              onShareSeason: () => setModal({ kind: 'shareSeason' }),
+              onOpenSquad: () => setModal({ kind: 'squad' }),
+              onOpenDeposit: openDeposit,
+              onOpenWeekly: openWeekly,
+            })),
+          tab === 'discover' && h(PaneBoundary, { onReset: () => setTab('overview') },
+            h(DiscoverPane, {
+              onToast: showToast,
+              onOpenSquad: () => setModal({ kind: 'squad' }),
+            })),
+          tab === 'archive' && h(PaneBoundary, { onReset: () => setTab('overview') },
+            h(ArchiveHub, {
+              member, data, catalogs, photos, photoError,
+              season: leanGoal?.season ?? null,
+              series: data.series, goalCodes,
+              section: archiveSection,
+              onSection: setArchiveSection,
+              onRecord: openEntry,
+              onMetricClick: (code) => setModal({ kind: 'metric', code }),
+              onCapture: () => openPhotoCapture('progress'),
+              onCaptureInspiration: () => openPhotoCapture('inspiration'),
+              onView: openPhoto,
+              onCompare: openPhotoCompare,
+              onRemovePhoto: removePhoto,
+              onAddDocument: () => setModal({ kind: 'document' }),
+              onRemoveDocument: removeDocument,
+              onRemoveCondition: removeCondition,
+              onAddCondition: addCondition,
+              onManageConditions: () => setModal({ kind: 'condition', member }),
+            })),
           h(FooterNote, { text: data.disclaimer, onOpen: () => setModal({ kind: 'disclaimer' }) }),
         ),
         toast && h('div', { className: 'dshh-toast', role: 'status', 'aria-live': 'polite' }, toast),
@@ -2232,7 +2523,9 @@ window.__ModuleLoader__.load({
           'div',
           { className: 'dshh-toprow' },
           h('div', { className: 'dshh-brand' },
-            h('h1', { className: 'dshh-title' }, '健康管理'),
+            h('div', { className: 'dshh-brandline' },
+              h('h1', { className: 'dshh-title' }, '健康管理'),
+              h('span', { className: 'dshh-preview-tag' }, '1.3')),
             h('div', { className: 'dshh-sub' },
               `${member.name} · ${member.relation} · ${member.sex} · ${member.riskLevel}`),
           ),
@@ -2516,7 +2809,7 @@ window.__ModuleLoader__.load({
       // Legacy hosts without a season payload keep the old CUT hero numbers.
       const stats = season.hasSeason
         ? [
-            { key: 'deposits', value: `${deposits}/${capacity}`, label: '本周存入 · 格' },
+            { key: 'deposits', value: `${deposits}/${capacity}`, label: '本周存入 · 笔' },
             { key: 'streak', value: String(streak), unit: '天', label: '连续记录' },
             { key: 'season', value: `${season.week}/${season.weeks}`, unit: '周', label: '赛季' },
           ]
@@ -2782,7 +3075,7 @@ window.__ModuleLoader__.load({
           h('button', { type: 'button', className: 'dshh-btn dshh-btn-sm',
             onClick: onOpenWeekly }, '查看周报')),
         h('div', { className: 'dshh-ledger-summary' },
-          `${range} · 已存入 ${totals.deposits}/${totals.max} 格 · 断更不惩罚，补录即可`),
+          `${range} · 已存入 ${totals.deposits}/${totals.max} 笔 · 断更不惩罚，补录即可`),
         h('div', { className: 'dshh-ledger-scroll' },
           h('div', { className: 'dshh-ledger' },
             h('div', { className: 'dshh-ledger-head' },
@@ -2818,7 +3111,7 @@ window.__ModuleLoader__.load({
             }),
           )),
         h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 10 } },
-          '实心 = 已存入 · 空心 = 有记录未存入 · 更浅 = 无记录；点击格子可补录当天。参考区间非医学标准。'),
+          '实心 = 已存入 · 空心 = 有记录未存入 · 更浅 = 无记录；点击对应位置可补录当天。参考区间非医学标准。'),
       )
     }
 
@@ -2865,7 +3158,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Season card: progress, checkpoints, review preview, new season. */
-    function SeasonCard({ goal, onOpenSeason, onStartSeason, onOpenHandbook }) {
+    function SeasonCard({ goal, onOpenSeason, onStartSeason, onOpenHandbook, onShareSeason, onOpenSquad }) {
       const season = seasonMeta(goal)
       const accounts = leanAccounts(goal)
       const review = seasonReviewModel(goal)
@@ -2899,13 +3192,17 @@ window.__ModuleLoader__.load({
             'data-reached': String(Boolean(mark?.reached)),
           }, `${mark?.label ?? `W${mark?.week ?? ''}`}${mark?.reached ? ' ✓' : ''}`))),
         h('div', { className: 'dshh-seasonstat' },
-          `赛季存入 ${review.deposits ?? 0}/${review.max ?? 0} 格 · 账户 ${accounts.length} 个`),
+          `赛季累计 ${review.deposits ?? 0} 笔 · 账户 ${accounts.length} 个`),
         h('div', { className: 'dshh-quickfoot' },
           h('button', {
             type: 'button',
             className: season.ended ? 'dshh-btn dshh-btn-primary' : 'dshh-btn',
             onClick: onOpenSeason,
           }, season.ended ? '赛季结算' : '赛季结算预览'),
+          h('button', { type: 'button', className: 'dshh-btn',
+            onClick: onShareSeason }, '分享赛季卡'),
+          h('button', { type: 'button', className: 'dshh-btn',
+            onClick: onOpenSquad }, '小队'),
           season.ended && !confirm && h('button', {
             type: 'button', className: 'dshh-btn dshh-btn-primary',
             onClick: () => setConfirm(true),
@@ -2922,6 +3219,708 @@ window.__ModuleLoader__.load({
               onClick: start }, '确认开启'))),
         h('div', { className: 'dshh-muted dshh-small' },
           '赛季只提供节奏，不承诺任何身体变化；赛季结束后可开启新赛季，旧记录保留。'),
+      )
+    }
+
+    /** Dedicated season section: progress, checkpoints, weekly ledger and rules. */
+    function SeasonPane({
+      goal, recent, photos,
+      onOpenSeason, onStartSeason, onOpenHandbook, onShareSeason, onOpenSquad,
+      onOpenDeposit, onOpenWeekly,
+    }) {
+      const [confirmStart, setConfirmStart] = useState(false)
+      if (!goal) {
+        return h('div', { className: 'dshh-seasonpane' },
+          h('section', { className: 'dshh-card dshh-season-empty' },
+            h('div', { className: 'dshh-cardtitle' }, '还没有薄肌赛季'),
+            h('div', { className: 'dshh-muted dshh-small' },
+              '先在「目标」里激活薄肌管理。赛季只提供 12 周节奏，不承诺身体变化。'),
+          ))
+      }
+      const season = seasonMeta(goal)
+      const review = seasonReviewModel(goal)
+      const accounts = leanAccounts(goal)
+      const weekly = leanWeeklyTotals(goal, accounts)
+      const streak = recordStreak({ recent, photos })
+      if (!season.hasSeason) {
+        return h('div', { className: 'dshh-seasonpane' },
+          h('section', { className: 'dshh-card dshh-season-empty' },
+            h('div', { className: 'dshh-cardtitle' }, '薄肌管理已激活'),
+            h('div', { className: 'dshh-muted dshh-small' },
+              '还没有开始赛季。开始一个 12 周赛季，用 W4 / W8 / W12 三个检查点看节奏；'
+              + '历史记录、照片和体成分数据都会保留。'),
+            h('div', { className: 'dshh-modal-actions' },
+              h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+                onClick: onStartSeason }, '开始第一个赛季')),
+          ))
+      }
+
+      const progress = Math.max(0, Math.min(100, Math.round(season.progress * 100)))
+      return h('div', { className: 'dshh-seasonpane' },
+        h('section', { className: 'dshh-seasonhero' },
+          h('div', { className: 'dshh-seasonhero-top' },
+            h('span', { className: 'dshh-season-kicker' },
+              `SEASON ${String(season.no ?? 1).padStart(2, '0')}`),
+            h('span', { className: 'dshh-season-status' },
+              `${season.ended ? '已结束' : '进行中'} · 第 ${Math.max(1, Math.min(season.week, season.weeks))} / ${season.weeks} 周`)),
+          h('h2', { className: 'dshh-seasonhero-title' }, '把 12 周存成一条线'),
+          h('p', { className: 'dshh-seasonhero-sub' },
+            '不比身体，只看本周有没有把可控的事存进去。补存也算，中断不惩罚。'),
+          h('div', { className: 'dshh-seasonhero-stats' },
+            h('div', { className: 'dshh-seasonhero-stat' },
+              h('b', null, `${weekly.deposits ?? 0}/${weekly.max ?? 28} 笔`),
+              h('span', null, '本周存入')),
+            h('div', { className: 'dshh-seasonhero-stat' },
+              h('b', null, `${review.deposits ?? 0} 笔`),
+              h('span', null, '赛季累计')),
+            h('div', { className: 'dshh-seasonhero-stat' },
+              h('b', null, String(review.trainingDays ?? 0)),
+              h('span', null, '训练天数')),
+            h('div', { className: 'dshh-seasonhero-stat' },
+              h('b', null, String(streak)),
+              h('span', null, '连续记录 · 天'))),
+          h('div', { className: 'dshh-seasonprogress' },
+            h('div', { className: 'dshh-seasonprogress-fill', style: { width: `${progress}%` } }),
+            h('span', { className: 'dshh-seasonprogress-label' }, `${progress}%`)),
+          h('div', { className: 'dshh-seasonhero-actions' },
+            h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+              onClick: onShareSeason }, '分享赛季卡'),
+            h('button', { type: 'button', className: 'dshh-btn',
+              onClick: onOpenSquad }, '小队'),
+            h('button', { type: 'button', className: 'dshh-btn',
+              onClick: onOpenSeason }, season.ended ? '赛季结算' : '赛季结算预览'),
+            h('button', { type: 'button', className: 'dshh-btn-ghost dshh-small',
+              onClick: onOpenHandbook }, '薄肌手册'),
+            season.ended && !confirmStart && h('button', {
+              type: 'button', className: 'dshh-btn dshh-btn-primary',
+              onClick: () => setConfirmStart(true),
+            }, '开启新赛季')),
+          confirmStart && h('div', { className: 'dshh-note', style: { marginTop: 12 } },
+            h('div', null,
+              `确认开启第 ${(season.no ?? 1) + 1} 赛季吗？只重置赛季计时，`
+              + '历史记录、照片和体成分数据都会保留。'),
+            h('div', { style: { display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 } },
+              h('button', { type: 'button', className: 'dshh-btn',
+                onClick: () => setConfirmStart(false) }, '再想想'),
+              h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+                onClick: onStartSeason }, '确认开启')))),
+        h('section', { className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '赛季检查点'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                'W4 / W8 / W12 只看节奏，不看体重或体型。'))),
+          h('div', { className: 'dshh-seasontimeline' }, season.checkpoints.map((mark, index) => {
+            const reached = Boolean(mark?.reached)
+            const weeksAway = Math.max(0, (mark?.week ?? 0) - season.week)
+            return h('div', {
+              key: `season-mark-${mark?.week ?? index}`,
+              className: 'dshh-seasontimeline-step',
+              'data-reached': String(reached),
+            },
+              h('span', { className: 'dshh-seasontimeline-dot' }, reached ? '✓' : '·'),
+              h('b', null, mark?.label ?? `W${mark?.week ?? ''}`),
+              h('small', null, reached ? '已到达' : weeksAway > 0 ? `${weeksAway} 周后` : '本周'))
+          }))),
+        h(WeeklyLedger, { goal, onOpenDeposit, onOpenWeekly }),
+        h('section', { className: 'dshh-card dshh-seasonrules' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '赛季规则'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                '账户记录行为，体成分只在对账单里观察。'))),
+          h('ul', null,
+            h('li', null, '12 周一个赛季；W4 / W8 / W12 是节奏点，不是考核。'),
+            h('li', null, '大练 / 蛋白 / 大睡 / 大水四个账户，每天每个账户最多存 1 笔；补存也算。'),
+            h('li', null, '1 笔 = 一个行为账户当天存入 1 次；4 个账户 × 7 天 = 每周最多 28 笔。'),
+            h('li', null, '体脂、体重、骨骼肌、腰围不计分、不排名、不做效果承诺。'),
+            h('li', null, '赛季结束可开启新赛季；历史记录和照片保留。'))),
+      )
+    }
+
+    function roundedRect(ctx, x, y, width, height, radius) {
+      const r = Math.max(0, Math.min(radius, width / 2, height / 2))
+      ctx.beginPath()
+      ctx.moveTo(x + r, y)
+      ctx.lineTo(x + width - r, y)
+      ctx.quadraticCurveTo(x + width, y, x + width, y + r)
+      ctx.lineTo(x + width, y + height - r)
+      ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height)
+      ctx.lineTo(x + r, y + height)
+      ctx.quadraticCurveTo(x, y + height, x, y + height - r)
+      ctx.lineTo(x, y + r)
+      ctx.quadraticCurveTo(x, y, x + r, y)
+      ctx.closePath()
+    }
+
+    /** Draw the local-only season poster. No network, no body data. */
+    function drawSeasonShare(canvas, { goal, alias }) {
+      if (!canvas) return
+      const width = 1080
+      const height = 1440
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const season = seasonMeta(goal)
+      const review = seasonReviewModel(goal)
+      const accounts = leanAccounts(goal)
+      const weekly = leanWeeklyTotals(goal, accounts)
+      const rows = accounts.length > 0 ? accounts : LEAN_ACCOUNT_FALLBACKS
+
+      ctx.fillStyle = '#0B0D12'
+      ctx.fillRect(0, 0, width, height)
+      const glow = ctx.createRadialGradient(width * 0.8, 210, 0, width * 0.8, 210, 620)
+      glow.addColorStop(0, 'rgba(215,255,63,.20)')
+      glow.addColorStop(1, 'rgba(215,255,63,0)')
+      ctx.fillStyle = glow
+      ctx.fillRect(0, 0, width, 780)
+      ctx.fillStyle = 'rgba(255,255,255,.055)'
+      for (let x = 48; x < width; x += 36) {
+        for (let y = 48; y < height; y += 36) {
+          ctx.beginPath()
+          ctx.arc(x, y, 1.4, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      }
+
+      ctx.fillStyle = '#D7FF3F'
+      ctx.fillRect(72, 72, 96, 8)
+      ctx.fillStyle = '#F2F4F8'
+      ctx.font = '700 76px "Microsoft YaHei", "Segoe UI", sans-serif'
+      ctx.fillText('薄肌账户', 72, 192)
+      ctx.fillStyle = '#9AA3B2'
+      ctx.font = '400 30px "Microsoft YaHei", "Segoe UI", sans-serif'
+      ctx.fillText(
+        `第 ${season.no} 赛季 · 第 ${Math.max(1, Math.min(season.week, season.weeks))} 周 / ${season.weeks} 周`,
+        72, 246,
+      )
+
+      ctx.fillStyle = '#D7FF3F'
+      ctx.font = '800 150px "Segoe UI", "Microsoft YaHei", sans-serif'
+      const totalText = String(weekly.deposits ?? 0)
+      ctx.fillText(totalText, 72, 438)
+      const totalWidth = ctx.measureText(totalText).width
+      ctx.fillStyle = '#F2F4F8'
+      ctx.font = '700 66px "Microsoft YaHei", "Segoe UI", sans-serif'
+      ctx.fillText(`/ ${weekly.max ?? 28} 笔`, 72 + totalWidth + 26, 438)
+      ctx.fillStyle = '#9AA3B2'
+      ctx.font = '400 30px "Microsoft YaHei", "Segoe UI", sans-serif'
+      ctx.fillText('本周存入 · 只记录行为账户', 72, 494)
+
+      rows.slice(0, 4).forEach((account, index) => {
+        const y = 600 + index * 126
+        const met = Math.max(0, Math.min(7, Number(account?.week?.met) || 0))
+        ctx.fillStyle = '#F2F4F8'
+        ctx.font = '600 34px "Microsoft YaHei", "Segoe UI", sans-serif'
+        ctx.fillText(account.name ?? account.metric, 72, y)
+        ctx.fillStyle = '#7F8796'
+        ctx.font = '400 24px "Microsoft YaHei", "Segoe UI", sans-serif'
+        ctx.fillText(account.role ?? '', 72, y + 36)
+        ctx.fillStyle = met > 0 ? '#D7FF3F' : '#7F8796'
+        ctx.font = '700 42px "Segoe UI", sans-serif'
+        ctx.fillText(`${met}/7`, 792, y)
+        ctx.fillStyle = 'rgba(255,255,255,.08)'
+        roundedRect(ctx, 72, y + 62, 900, 10, 5)
+        ctx.fill()
+        if (met > 0) {
+          ctx.fillStyle = '#D7FF3F'
+          roundedRect(ctx, 72, y + 62, 900 * (met / 7), 10, 5)
+          ctx.fill()
+        }
+      })
+
+      const checkpointY = 1148
+      ctx.fillStyle = '#F2F4F8'
+      ctx.font = '600 34px "Microsoft YaHei", "Segoe UI", sans-serif'
+      ctx.fillText('赛季检查点', 72, checkpointY)
+      season.checkpoints.forEach((mark, index) => {
+        const x = 72 + index * 240
+        ctx.fillStyle = mark.reached ? '#D7FF3F' : 'rgba(255,255,255,.12)'
+        roundedRect(ctx, x, checkpointY + 38, 180, 76, 16)
+        ctx.fill()
+        ctx.fillStyle = mark.reached ? '#0B0D12' : '#8A92A1'
+        ctx.font = '700 30px "Segoe UI", "Microsoft YaHei", sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(`${mark.label}${mark.reached ? ' ✓' : ''}`, x + 90, checkpointY + 86)
+        ctx.textAlign = 'left'
+      })
+
+      ctx.fillStyle = '#F2F4F8'
+      ctx.font = '600 30px "Microsoft YaHei", "Segoe UI", sans-serif'
+      ctx.fillText(`分享者 · ${String(alias || '我').slice(0, 20)}`, 72, 1324)
+      ctx.fillStyle = '#6F7787'
+      ctx.font = '400 24px "Microsoft YaHei", "Segoe UI", sans-serif'
+      ctx.fillText('仅行为记录 · 不含体成分 / 体重 / 照片 / 健康档案', 72, 1372)
+      ctx.fillStyle = '#D7FF3F'
+      ctx.fillRect(72, 1398, 86, 4)
+    }
+
+    function ShareSeasonModal({ member, goal, onClose, onToast }) {
+      const [alias, setAlias] = useState(() => shareAliasOf(member))
+      const canvasRef = useRef(null)
+      useEffect(() => {
+        drawSeasonShare(canvasRef.current, { goal, alias })
+      }, [goal, alias])
+      const season = seasonMeta(goal)
+      const review = seasonReviewModel(goal)
+
+      function save() {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const link = document.createElement('a')
+        link.href = canvas.toDataURL('image/png')
+        link.download = `dsh-thin-season-${season.no || 1}-w${season.week || 1}.png`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        onToast?.('赛季卡已生成，保存后由你自行分享')
+      }
+
+      async function copy() {
+        const accounts = leanAccounts(goal)
+          .map((account) => `${account.name ?? account.metric} ${account?.week?.met ?? 0}/7`)
+          .join(' · ')
+        const text = `薄肌账户 · 第 ${season.no} 赛季 · 第 ${season.week}/${season.weeks} 周\n`
+          + `本周存入 ${weekly.deposits ?? 0}/${weekly.max ?? 28} 笔\n${accounts}\n`
+          + '只记录行为，不比较身体。'
+        const ok = await leanCopyText(text)
+        onToast?.(ok ? '分享文案已复制' : '复制失败，可手动选择文本')
+      }
+
+      return h(ModalFrame, { title: '分享赛季卡', onClose },
+        h('div', { className: 'dshh-preview-row' },
+          h('span', { className: 'dshh-preview-tag' }, '本地生成'),
+          h('span', { className: 'dshh-muted dshh-small' }, '不会上传，图片只保存在你点保存的位置')),
+        h('div', { className: 'dshh-share-preview' },
+          h('canvas', { ref: canvasRef, className: 'dshh-share-canvas' })),
+        h('div', { className: 'dshh-field' },
+          h('label', { className: 'dshh-field-label' }, '分享者别名'),
+          h('input', {
+            className: 'dshh-input', maxLength: 20, value: alias,
+            onChange: (event) => setAlias(event.target.value),
+            placeholder: '如：我',
+          }),
+          h('div', { className: 'dshh-muted dshh-small' },
+            '默认「我」；不要填写真实姓名。图片只包含行为账户，不含体成分、体重、照片或健康档案。')),
+        h('div', { className: 'dshh-modal-actions' },
+          h('button', { type: 'button', className: 'dshh-btn', onClick: copy }, '复制文案'),
+          h('button', { type: 'button', className: 'dshh-btn', onClick: onClose }, '关闭'),
+          h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary', onClick: save }, '保存图片')),
+      )
+    }
+
+    async function communityPost(action, args) {
+      const response = await fetch(`${API}/community`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action, ...args }),
+      })
+      const body = await response.json().catch(() => ({ ok: false, error: '社群服务返回异常。' }))
+      if (!body.ok) throw new Error(body.error ?? '社群操作失败。')
+      return body.data
+    }
+
+    async function communityBoard(code) {
+      const response = await fetch(
+        `${API}/community/leaderboard?code=${encodeURIComponent(code)}`,
+        { credentials: 'same-origin' },
+      )
+      const body = await response.json().catch(() => ({ ok: false, error: '社群服务返回异常。' }))
+      if (!body.ok) throw new Error(body.error ?? '读取排行榜失败。')
+      return body.data
+    }
+
+    function SquadModal({ member, goal, recent, photos, onClose, onToast }) {
+      const [membership, setMembership] = useState(() => {
+        const stored = readLocalJSON(SQUAD_MEMBERSHIP_KEY, null)
+        return stored?.code && stored?.token && stored?.memberId ? stored : null
+      })
+      const [squad, setSquad] = useState(null)
+      const [alias, setAlias] = useState(() => shareAliasOf(member))
+      const [codeInput, setCodeInput] = useState('')
+      const [joinMode, setJoinMode] = useState(false)
+      const [consent, setConsent] = useState(false)
+      const [busy, setBusy] = useState(false)
+      const [error, setError] = useState(null)
+
+      const snapshot = () => squadSnapshot(goal, { recent, photos })
+
+      function remember(next) {
+        setMembership(next)
+        writeLocalJSON(SQUAD_MEMBERSHIP_KEY, next)
+      }
+
+      async function refresh(code) {
+        if (!code) return
+        try {
+          const board = await communityBoard(code)
+          setSquad(board)
+          setError(null)
+        } catch (cause) {
+          setError(String(cause?.message ?? cause))
+        }
+      }
+
+      useEffect(() => {
+        if (!membership?.code) return
+        refresh(membership.code)
+        // Only re-fetch when the stored squad changes; snapshots update explicitly.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [membership?.code])
+
+      async function createSquad() {
+        setError(null)
+        if (!consent) { setError('请先确认分享范围。'); return }
+        setBusy(true)
+        try {
+          const data = await communityPost('create', { alias, snapshot: snapshot() })
+          remember({ code: data.code, token: data.token, memberId: data.memberId })
+          setSquad(data.squad)
+          onToast?.('小队已创建，把邀请码发给队友')
+        } catch (cause) {
+          setError(String(cause?.message ?? cause))
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      async function joinSquad() {
+        setError(null)
+        if (!consent) { setError('请先确认分享范围。'); return }
+        if (!codeInput.trim()) { setError('请输入邀请码。'); return }
+        setBusy(true)
+        try {
+          const data = await communityPost('join', {
+            code: codeInput.trim().toUpperCase(), alias, snapshot: snapshot(),
+          })
+          remember({ code: data.code, token: data.token, memberId: data.memberId })
+          setSquad(data.squad)
+          onToast?.('已加入小队')
+        } catch (cause) {
+          setError(String(cause?.message ?? cause))
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      async function updateSnapshot() {
+        if (!membership) return
+        setBusy(true)
+        setError(null)
+        try {
+          const data = await communityPost('snapshot', {
+            code: membership.code, token: membership.token, snapshot: snapshot(),
+          })
+          setSquad(data)
+          onToast?.('本周存入已同步到小队')
+        } catch (cause) {
+          setError(String(cause?.message ?? cause))
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      async function leaveSquad() {
+        if (!membership) return
+        if (typeof window.confirm === 'function'
+          && !window.confirm('退出小队？你的小队成员记录会被删除，健康数据不受影响。')) return
+        setBusy(true)
+        setError(null)
+        try {
+          await communityPost('leave', { code: membership.code, token: membership.token })
+          remember(null)
+          setSquad(null)
+          setJoinMode(false)
+          onToast?.('已退出小队')
+        } catch (cause) {
+          setError(String(cause?.message ?? cause))
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      async function switchSquad() {
+        if (!membership) return
+        if (typeof window.confirm === 'function'
+          && !window.confirm('加入其他小队需要先退出当前小队；你的健康数据不受影响。继续吗？')) return
+        setBusy(true)
+        setError(null)
+        try {
+          await communityPost('leave', { code: membership.code, token: membership.token })
+          remember(null)
+          setSquad(null)
+          setCodeInput('')
+          setJoinMode(true)
+          setConsent(false)
+          onToast?.('已退出当前小队，输入新的邀请码加入')
+        } catch (cause) {
+          setError(String(cause?.message ?? cause))
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      async function copyCode() {
+        const code = membership?.code ?? ''
+        const ok = await copyInviteCode(code)
+        onToast?.(ok ? '邀请码已复制' : '复制失败，请稍后再试')
+      }
+
+      const leaderboard = squad?.members ?? []
+      const consentBlock = h('div', { className: 'dshh-consent' },
+        h('div', { className: 'dshh-consent-head' }, '授权后才分享，且只分享这些'),
+        h('div', { className: 'dshh-consent-cols' },
+          h('div', null,
+            h('div', { className: 'dshh-consent-label' }, '会分享'),
+            h('ul', null,
+              h('li', null, '赛季编号 / 周次'),
+              h('li', null, '大练 / 蛋白 / 大睡 / 大水 本周存入笔数'),
+              h('li', null, '连续记录天数'))),
+          h('div', null,
+            h('div', { className: 'dshh-consent-label' }, '不会分享'),
+            h('ul', null,
+              h('li', null, '体成分 / 体重 / 照片'),
+              h('li', null, '疾病标签 / 档案 / 备注'),
+              h('li', null, '年龄 / 性别 / 精确位置')))),
+        h('label', { className: 'dshh-checkline' },
+          h('input', {
+            type: 'checkbox', checked: consent,
+            onChange: (event) => setConsent(event.target.checked),
+          }),
+          h('span', null, '我已知晓并同意分享上述行为数据')),
+        h('div', { className: 'dshh-muted dshh-small' },
+          '这是本地预览：数据写在本机 .dsh-health/community.json，不会发到互联网。正式版接入远端服务前会再次征得同意并补齐隐私说明。'))
+
+      return h(ModalFrame, { title: '小队 · 赛季排行', onClose },
+        h('div', { className: 'dshh-preview-row' },
+          h('span', { className: 'dshh-preview-tag' }, '预览版'),
+          h('span', { className: 'dshh-muted dshh-small' }, '本地小队服务 · 验收用')),
+        error && h('div', { className: 'dshh-form-error', role: 'alert' }, error),
+        !membership ? h('div', { className: 'dshh-squad-onboard' },
+          consentBlock,
+          h('div', { className: 'dshh-field' },
+            h('label', { className: 'dshh-field-label' }, '小队昵称'),
+            h('input', {
+              className: 'dshh-input', maxLength: 20, value: alias,
+              onChange: (event) => setAlias(event.target.value),
+            }),
+            h('div', { className: 'dshh-muted dshh-small' }, '默认「我」；建议使用昵称，不填真实姓名。')),
+          joinMode && h('div', { className: 'dshh-field' },
+            h('label', { className: 'dshh-field-label' }, '邀请码'),
+            h('input', {
+              className: 'dshh-input', maxLength: 6, value: codeInput,
+              placeholder: '6 位邀请码',
+              onChange: (event) => setCodeInput(event.target.value.toUpperCase()),
+            })),
+          h('div', { className: 'dshh-modal-actions' },
+            h('button', { type: 'button', className: 'dshh-btn', disabled: busy,
+              onClick: () => setJoinMode((value) => !value) },
+            joinMode ? '改为创建' : '输入邀请码加入'),
+            h('button', {
+              type: 'button', className: 'dshh-btn dshh-btn-primary', disabled: busy,
+              onClick: joinMode ? joinSquad : createSquad,
+            }, busy ? '处理中…' : joinMode ? '加入小队' : '创建小队')))
+          : h('div', { className: 'dshh-squad-active' },
+            h('div', { className: 'dshh-squad-head' },
+              h('div', null,
+                h('div', { className: 'dshh-squad-title' }, `小队 ${membership.code}`),
+                h('div', { className: 'dshh-muted dshh-small' },
+                  `${squad?.memberCount ?? 0}/${squad?.maxMembers ?? 8} 人 · 只排行为，不排身体`)),
+              h('button', { type: 'button', className: 'dshh-btn-ghost dshh-small',
+                onClick: copyCode }, '复制邀请码')),
+            h('div', { className: 'dshh-squad-list' }, leaderboard.length > 0
+              ? leaderboard.map((item) => h('div', {
+                  key: item.memberId,
+                  className: 'dshh-squad-row',
+                  'data-self': String(item.memberId === membership.memberId),
+                },
+                h('span', { className: 'dshh-squad-rank' }, `#${item.rank}`),
+                h('div', { className: 'dshh-squad-person' },
+                  h('span', { className: 'dshh-squad-name' },
+                    item.alias + (item.memberId === membership.memberId ? ' · 我' : '')),
+                  h('span', { className: 'dshh-muted dshh-small' },
+                    `连续 ${item.snapshot?.streak ?? 0} 天`)),
+                h('div', { className: 'dshh-squad-cells' }, SQUAD_ACCOUNTS.map((account) =>
+                  h('span', { key: account.code, className: 'dshh-squad-cell' },
+                    `${account.name} ${item.snapshot?.deposits?.[account.code] ?? 0}`))),
+                h('span', { className: 'dshh-squad-total' }, `${item.total}/28 笔`)))
+              : h('div', { className: 'dshh-squad-empty' },
+                '还没有排行榜数据，点「更新我的存入」开始。')),
+            h('div', { className: 'dshh-squad-note' },
+              '排行榜只比较行为账户存入，补存也算；不比较体成分、体重、照片或训练总量。'),
+            h('div', { className: 'dshh-modal-actions' },
+              h('button', { type: 'button', className: 'dshh-btn-ghost dshh-small',
+                onClick: switchSquad, disabled: busy }, '加入其他小队'),
+              h('button', { type: 'button', className: 'dshh-btn', onClick: leaveSquad, disabled: busy }, '退出小队'),
+              h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+                onClick: updateSnapshot, disabled: busy }, busy ? '同步中…' : '更新我的存入'))))
+    }
+
+    function DiscoverPane({ onToast, onOpenSquad }) {
+      const [filter, setFilter] = useState('all')
+      const [query, setQuery] = useState('')
+      const [venues, setVenues] = useState([])
+      const [region, setRegion] = useState(null)
+      const [loading, setLoading] = useState(true)
+      const [error, setError] = useState(null)
+      const [favorites, setFavorites] = useState(() => {
+        const stored = readLocalJSON(PLACE_FAVORITES_KEY, [])
+        return Array.isArray(stored) ? stored : []
+      })
+
+      useEffect(() => {
+        let alive = true
+        getJSON(`${API}/venues`)
+          .then((body) => {
+            if (!alive) return
+            if (!body.ok) throw new Error(body.error ?? '读取场馆数据失败。')
+            setVenues(Array.isArray(body.data?.venues) ? body.data.venues : [])
+            setRegion(body.data?.region ?? null)
+            setError(null)
+          })
+          .catch((cause) => {
+            if (alive) setError(String(cause?.message ?? cause))
+          })
+          .finally(() => {
+            if (alive) setLoading(false)
+          })
+        return () => { alive = false }
+      }, [])
+
+      const queryText = query.trim().toLowerCase()
+      const visible = venues.filter((place) => {
+        if (filter !== 'all' && place.category !== filter) return false
+        if (!queryText) return true
+        const haystack = [place.name, place.address, place.area, ...(place.tags ?? [])]
+          .join(' ')
+          .toLowerCase()
+        return haystack.includes(queryText)
+      })
+
+      function toggleFavorite(id) {
+        const next = favorites.includes(id)
+          ? favorites.filter((item) => item !== id)
+          : [...favorites, id]
+        setFavorites(next)
+        writeLocalJSON(PLACE_FAVORITES_KEY, next)
+        onToast?.(favorites.includes(id) ? '已取消收藏' : '已收藏到本机')
+      }
+
+      function placeCard(place) {
+        const favorited = favorites.includes(place.id)
+        const source = place.source ?? {}
+        return h('article', { key: place.id, className: 'dshh-placecard' },
+          h('div', { className: 'dshh-placehead' },
+            h('div', null,
+              h('div', { className: 'dshh-placename' }, place.name),
+              h('div', { className: 'dshh-muted dshh-small' },
+                `${place.typeName} · ${place.area}`)),
+            h('span', { className: 'dshh-placefee' }, place.fee)),
+          h('div', { className: 'dshh-placetags' }, (place.tags ?? []).map((tag) =>
+            h('span', { key: tag, className: 'dshh-placetag' }, tag))),
+          h('div', { className: 'dshh-placemeta' },
+            h('span', null, place.address),
+            h('span', null, `开放 ${place.hours} · 收费 ${place.fee}`),
+            h('span', { className: 'dshh-place-source' },
+              `来源 ${source.name ?? '公开信息'} · ${source.date ?? ''} `,
+              source.url && h('a', { href: source.url, target: '_blank', rel: 'noreferrer' }, '查看来源'))),
+          h('div', { className: 'dshh-placeactions' },
+            h('a', {
+              className: 'dshh-btn dshh-btn-ghost dshh-small',
+              href: mapSearchUrl('amap', place.mapQuery ?? `${place.name} 杭州余杭`),
+              target: '_blank', rel: 'noreferrer',
+            }, '在高德中查找'),
+            h('button', {
+              type: 'button', className: 'dshh-btn-ghost dshh-small',
+              onClick: () => toggleFavorite(place.id),
+            }, favorited ? '已收藏' : '收藏')),
+        )
+      }
+
+      const discoverTiles = [
+        { title: '附近健身房', desc: '高德地图搜索附近场馆', href: mapSearchUrl('amap', '健身房 杭州余杭'), cta: '打开地图' },
+        { title: '公共健身场所', desc: '公园、社区健身角与开放场地', href: mapSearchUrl('baidu', '公共健身场所 杭州余杭'), cta: '百度查找' },
+        { title: '场馆档案', desc: '余杭区试点：地址、开放与收费', onClick: () => document.getElementById('dshh-discover-venues')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), cta: '浏览余杭场馆' },
+        { title: '赛季小队', desc: '邀请制行为排行，不比身体', onClick: onOpenSquad, cta: '打开小队' },
+        { title: '活动与赛事', desc: '城市活动、赛季挑战', disabled: true, cta: '即将接入' },
+        { title: '装备与服务', desc: '装备、场馆服务与更多内容', disabled: true, cta: '即将接入' },
+      ]
+
+      return h('div', { className: 'dshh-discover' },
+        h('section', { className: 'dshh-card dshh-discover-hero' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '发现'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                region
+                  ? `${region.name} 试点 · 公开信息整理，可追溯来源`
+                  : '场所、活动与服务；所有入口都先由你选择。')),
+            h('span', { className: 'dshh-preview-tag' }, '余杭试点')),
+          h('div', { className: 'dshh-discovertiles' }, discoverTiles.map((tile) => {
+            const disabled = Boolean(tile.disabled)
+            const tag = tile.href ? 'a' : 'button'
+            return h(tag, {
+              key: tile.title,
+              className: 'dshh-discovertile',
+              href: tile.href,
+              target: tile.href ? '_blank' : undefined,
+              rel: tile.href ? 'noreferrer' : undefined,
+              type: tile.href ? undefined : 'button',
+              disabled: disabled || (!tile.href && !tile.onClick),
+              'data-disabled': String(disabled),
+              onClick: disabled ? undefined : tile.onClick,
+            },
+              h('span', { className: 'dshh-discovertile-title' }, tile.title),
+              h('span', { className: 'dshh-discovertile-desc' }, tile.desc),
+              h('span', { className: 'dshh-discovertile-cta' }, tile.cta))
+          })),
+          h('div', { className: 'dshh-discover-note' },
+            '当前只做余杭区试点；活动、装备与更多服务会在验收后逐步接入。')),
+        h('section', { id: 'dshh-discover-venues', className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '余杭区场馆'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                region?.note ?? '公开信息整理；开放时间、收费与入场规则可能调整，以现场/官方最新公告为准。')),
+            h('span', { className: 'dshh-preview-tag' }, `${venues.length} 个`)),
+          h('div', { className: 'dshh-place-search' },
+            h('input', {
+              className: 'dshh-input', value: query,
+              placeholder: '搜索场馆名、街道或器械，如「良渚」「篮球」',
+              onChange: (event) => setQuery(event.target.value),
+            })),
+          h('div', { className: 'dshh-placelinks' },
+            h('a', { className: 'dshh-btn dshh-btn-primary dshh-small',
+              href: mapSearchUrl('amap', '健身房 杭州余杭'), target: '_blank', rel: 'noreferrer' }, '高德找健身房'),
+            h('a', { className: 'dshh-btn dshh-small',
+              href: mapSearchUrl('baidu', '公共健身场所 杭州余杭'), target: '_blank', rel: 'noreferrer' }, '百度找公共场地'),
+            h('a', { className: 'dshh-btn dshh-small',
+              href: mapSearchUrl('google', 'gym Yuhang Hangzhou'), target: '_blank', rel: 'noreferrer' }, 'Google Maps')),
+          h('div', { className: 'dshh-placefilters' },
+            [['all', '全部'], ['public', '公共场地'], ['gym', '健身房'], ['specialty', '特色场馆']]
+              .map(([code, label]) =>
+                h('button', {
+                  key: code, type: 'button',
+                  className: 'dshh-placefilter', 'data-active': String(filter === code),
+                  onClick: () => setFilter(code),
+                }, label))),
+          loading && h('div', { className: 'dshh-note dshh-small' }, '正在读取余杭区场馆…'),
+          error && h('div', { className: 'dshh-form-error' },
+            `场馆数据读取失败：${error}。仍可点上方地图按钮查找实时结果。`),
+          h('div', { className: 'dshh-note dshh-small' },
+            '数据来源：杭州市文化广电旅游局 / 余杭文旅、余杭发布、电话邦公开目录；来源日期见每张卡片。开放时间、收费和入场规则以现场/官方最新公告为准。这里不提供训练计划、课程或医疗建议。')),
+        h('div', { className: 'dshh-placegrid' }, visible.map(placeCard)),
+        !loading && !error && visible.length === 0 && h('div', { className: 'dshh-note dshh-small' },
+          '没有匹配的场馆；换个关键词或切到「全部」。'),
+        favorites.length > 0 && h('section', { className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '我的收藏'),
+              h('div', { className: 'dshh-muted dshh-small' }, '只保存在本机，不上传。'))),
+          h('div', { className: 'dshh-placegrid' },
+            venues.filter((place) => favorites.includes(place.id)).map(placeCard))),
       )
     }
 
@@ -3041,12 +4040,12 @@ window.__ModuleLoader__.load({
 
       return h(ModalFrame, { title: '本周对账单', onClose, wide: true },
         h('div', { className: 'dshh-review-grid' },
-          h(ReviewStat, { label: '已存入', value: `${totals.deposits}/${totals.max} 格` }),
-          h(ReviewStat, { label: '存入率', value: fmtPercent(rate) }),
+          h(ReviewStat, { label: '已存入', value: `${totals.deposits}/${totals.max} 笔` }),
+          h(ReviewStat, { label: '完成度', value: fmtPercent(rate) }),
           h(ReviewStat, { label: '照片天数', value: `${totals.photoDays} 天` }),
           h(ReviewStat, { label: '记录天数', value: `${totals.recordDays} 天` })),
         h('div', { className: 'dshh-muted dshh-small' },
-          `近 7 天你存入了 ${totals.deposits}/${totals.max} 格，照片覆盖 ${totals.photoDays} 天，`
+          `近 7 天你存入了 ${totals.deposits}/${totals.max} 笔，照片覆盖 ${totals.photoDays} 天，`
           + `有记录 ${totals.recordDays} 天。`),
         h('div', { className: 'dshh-review-sub' }, '四账户'),
         h('div', null, accounts.map((account) => {
@@ -3071,6 +4070,7 @@ window.__ModuleLoader__.load({
     function SeasonReviewModal({ member, goal, photos, onClose, onToast }) {
       const review = seasonReviewModel(goal)
       const season = seasonMeta(goal)
+      const weekly = leanWeeklyTotals(goal, leanAccounts(goal))
       // seasonReview.weeks may mean "elapsed weeks" or "season length"; keep the
       // larger value so the 12-week frame survives either contract reading.
       const totalWeeks = Math.max(
@@ -3096,13 +4096,13 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dshh-review-grid' },
           h(ReviewStat, { label: '赛季周数', value: `${review.week}/${totalWeeks}` }),
           h(ReviewStat, { label: '已过天数', value: `${review.days} 天` }),
-          h(ReviewStat, { label: '存入格数', value: `${review.deposits}/${review.max}` }),
-          h(ReviewStat, { label: '存入率', value: fmtPercent(review.rate) })),
-        h('div', { className: 'dshh-review-sub' }, '四账户存入'),
+          h(ReviewStat, { label: '本周存入', value: `${weekly.deposits}/${weekly.max} 笔` }),
+          h(ReviewStat, { label: '累计存入', value: `${review.deposits} 笔` })),
+        h('div', { className: 'dshh-review-sub' }, '四账户累计存入'),
         h('div', null, (review.byAccount ?? []).map((item, index) =>
           h('div', { key: item?.code ?? `account-${index}`, className: 'dshh-review-line' },
             h('span', null, item?.name ?? '账户'),
-            h('span', null, item?.label ?? `${item?.deposits ?? 0}/${item?.max ?? 0} 格`)))),
+            h('span', null, `${item?.deposits ?? 0} 笔`)))),
         h('div', { className: 'dshh-review-sub' }, '行为与证据'),
         h('div', { className: 'dshh-review-grid' },
           h(ReviewStat, {
@@ -3186,13 +4186,13 @@ window.__ModuleLoader__.load({
       )
     }
 
-    /** Overview tab: hero -> coach tone -> deposits -> ledger -> body -> season -> goals. */
+    /** Overview tab: hero -> coach tone -> deposits -> body -> goals. */
     function OverviewPane(props) {
       const {
         member, data, goals, templates, catalogs, contexts, photos, run,
         onToast, onEntry, onManageGoal, onSetGoal, onMetric, onDeleteRecord,
         onCapturePhoto, onOpenPhotosTab,
-        onDeposit, onOpenWeekly, onOpenSeason, onStartSeason, onOpenHandbook,
+        onDeposit, onOpenWeekly, onOpenSeason,
       } = props
       const [tone, setTone] = useState(() => readTone(member.id))
       const [toneSeen, setToneSeen] = useState(() => readToneSeen(member.id))
@@ -3212,7 +4212,6 @@ window.__ModuleLoader__.load({
       // fall back to the legacy quick-log layout instead of showing empty boards.
       const leanReady = Boolean(leanGoal
         && Array.isArray(leanGoal.accounts) && leanGoal.accounts.length > 0)
-      const leanSeason = leanGoal ? seasonMeta(leanGoal) : null
       // On an active lean dashboard the goal card and the generic "latest
       // metrics" block duplicate the accounts / body statement. Keep them for
       // the metabolic view, and keep the goal card when goals data is broken so
@@ -3262,18 +4261,7 @@ window.__ModuleLoader__.load({
               member, goals, templates, catalogs, contexts, run,
               onToast, onMore: onEntry, onSetGoal, onManageGoal,
             }),
-        leanReady && h(WeeklyLedger, {
-          goal: leanGoal,
-          onOpenDeposit: onDeposit,
-          onOpenWeekly,
-        }),
         leanGoal && h(BodyStatement, { goal: leanGoal, onMetric }),
-        leanReady && leanSeason?.hasSeason && h(SeasonCard, {
-          goal: leanGoal,
-          onOpenSeason,
-          onStartSeason,
-          onOpenHandbook,
-        }),
         showGoalCards && h(GoalCards, {
           goals, templates, error: data.goalError,
           onManage: onManageGoal, onSet: onSetGoal, onRecord: onEntry,
@@ -4098,6 +5086,77 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function ArchiveHub({
+      member, data, catalogs, photos, photoError, season, series, goalCodes,
+      section, onSection, onRecord, onMetricClick, onCapture, onCaptureInspiration,
+      onView, onCompare, onRemovePhoto, onAddDocument, onRemoveDocument,
+      onRemoveCondition, onAddCondition, onManageConditions,
+    }) {
+      const sections = [
+        { code: 'trends', name: '趋势', hint: '指标变化' },
+        { code: 'photos', name: '照片', hint: '进度与激励' },
+        { code: 'documents', name: '资料', hint: '病历与标签' },
+      ]
+      const current = sections.some((item) => item.code === section) ? section : 'trends'
+      const photoCount = photos?.length ?? 0
+      const documentCount = Array.isArray(data?.documents) ? data.documents.length : 0
+      const conditionCount = Array.isArray(data?.conditions) ? data.conditions.length : 0
+      const trendCount = Array.isArray(series)
+        ? series.length
+        : Object.keys(series ?? {}).length
+
+      const stat = (value, label, target) => h('button', {
+        type: 'button', className: 'dshh-archive-stat',
+        onClick: () => onSection(target),
+      },
+        h('b', null, String(value)),
+        h('span', null, label))
+
+      return h('div', { className: 'dshh-archivehub' },
+        h('section', { className: 'dshh-card dshh-archivehead' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '健康档案'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                '趋势、照片与医疗资料放在同一个地方；它们都是档案的一部分。'))),
+          h('div', { className: 'dshh-archive-stats' },
+            stat(photoCount, '张照片', 'photos'),
+            stat(documentCount, '份医疗档案', 'documents'),
+            stat(conditionCount, '个健康标签', 'documents'),
+            stat(trendCount, '项趋势指标', 'trends')),
+          h('div', { className: 'dshh-archive-actions' },
+            h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+              onClick: onRecord }, '记录指标'),
+            h('button', { type: 'button', className: 'dshh-btn',
+              onClick: onAddDocument }, '上传档案'),
+            h('button', { type: 'button', className: 'dshh-btn',
+              onClick: onCapture }, '拍一张'))),
+        h('nav', { className: 'dshh-archivenav', role: 'tablist' },
+          sections.map((item) => h('button', {
+            key: item.code,
+            type: 'button',
+            role: 'tab',
+            className: 'dshh-archivenav-btn',
+            'data-active': String(current === item.code),
+            'aria-selected': String(current === item.code),
+            onClick: () => onSection(item.code),
+          },
+            h('span', null, item.name),
+            h('small', null, item.hint)))),
+        current === 'trends' && h(TrendsPane, {
+          series, goalCodes, catalogs, onMetricClick, onRecord,
+        }),
+        current === 'photos' && h(PhotosPane, {
+          member, photos, photoError, season,
+          onCapture, onCaptureInspiration, onView, onCompare, onRemovePhoto,
+        }),
+        current === 'documents' && h(ArchivePane, {
+          member, data, catalogs,
+          onAddDocument, onRemoveDocument, onRemoveCondition, onAddCondition, onManageConditions,
+        }),
+      )
+    }
+
     function ArchivePane({ member, data, catalogs, onAddDocument, onRemoveDocument, onRemoveCondition, onAddCondition, onManageConditions }) {
       return h(
         'div',
@@ -4213,6 +5272,22 @@ window.__ModuleLoader__.load({
         return h(SeasonReviewModal, {
           member,
           goal: leanGoalOf(data?.goals),
+          photos: data?.photos ?? [],
+          onClose, onToast,
+        })
+      }
+      if (modal.kind === 'shareSeason') {
+        return h(ShareSeasonModal, {
+          member,
+          goal: leanGoalOf(data?.goals),
+          onClose, onToast,
+        })
+      }
+      if (modal.kind === 'squad') {
+        return h(SquadModal, {
+          member,
+          goal: leanGoalOf(data?.goals),
+          recent: data?.recent ?? [],
           photos: data?.photos ?? [],
           onClose, onToast,
         })
@@ -5010,6 +6085,20 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------- register
 
+    function SafeHealthPanel(props) {
+      return h(PaneBoundary, {
+        onReset: () => {
+          try { window.location.reload() } catch { /* ignore */ }
+        },
+      }, h(HealthPanel, props))
+    }
+
+    // Preview-only debug handle used by local acceptance tooling. It is not
+    // used by the panel itself.
+    if (typeof window !== 'undefined') {
+      window.__dshHealthDebug = { SeasonPane, DiscoverPane, ArchiveHub, WeeklyLedger, SquadModal, ShareSeasonModal }
+    }
+
     return {
       inject: ['slots'],
       apply(ctx) {
@@ -5020,7 +6109,7 @@ window.__ModuleLoader__.load({
           ),
         )
         ctx.slots.inject('main', () =>
-          ctx.slots.register({ name: 'main', key: 'dsh-health' }, HealthPanel),
+          ctx.slots.register({ name: 'main', key: 'dsh-health' }, SafeHealthPanel),
         )
       },
     }
