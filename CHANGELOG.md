@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 — 2026-11-14
+
+- Four main tabs: overview, season, archive, discover.
+- Season is a dedicated section with hero, W4/W8/W12 checkpoints, weekly ledger, share card and squad entry.
+- Archive becomes the single home for trends, photos and medical documents, with counts and quick actions.
+- Discover ships a Hangzhou Yuhang district pilot with 10 public/community/specialty venues, search, filters, source links and local favourites.
+- Local-only invite squad MVP with behavior-only leaderboard; no remote service.
+- Deposits now use the unit **笔**; season time is expressed in weeks.
+- Invite-code copy uses a local Windows clipboard bridge with browser fallback.
+
 ## 1.2.1 — 2026-11-13
 
 - The panel always opens on **我** (self); it no longer auto-selects another member just because that member has a goal.
