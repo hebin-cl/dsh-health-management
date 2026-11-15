@@ -62,7 +62,7 @@ After install, refresh the Web UI (or restart the host if the profile asks for i
 
 ### Discover it in the DSH plugin market
 
-- A submission entry is prepared at [`market/awesome-dsh-plugin-entry.yml`](market/awesome-dsh-plugin-entry.yml); after the repository is at least one day old, open a PR to the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) registry. Once merged, it becomes searchable in the **dshmarket** Discover tab and installable with one click.
+- A submission PR is open against the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) registry ([#15394](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/15394)); the entry is [`market/hebin-cl__dsh-health-management.yml`](market/hebin-cl__dsh-health-management.yml). Once merged, it becomes searchable in the **dshmarket** Discover tab and installable with one click.
 - Until then, add the included native format-1 index from **Plugins → Discover → Index sources**:
 
   ```
@@ -130,12 +130,25 @@ scripts/              Checks and market-index generator
 
 ## Market listing
 
-The submission entry is prepared at [`market/awesome-dsh-plugin-entry.yml`](market/awesome-dsh-plugin-entry.yml). To list the plugin:
+The submission PR is
+[#15394](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/15394); it
+adds the single entry file kept here as
+[`market/hebin-cl__dsh-health-management.yml`](market/hebin-cl__dsh-health-management.yml)
+as `data/plugins/hebin-cl__dsh-health-management.yml` (PR body:
+[`market/PR-BODY.md`](market/PR-BODY.md)).
 
-1. Create/push the GitHub repository and add the `dsh-plugin` topic.
-2. Use the GitHub source or the prebuilt `dsh-health-management.tgz` attached to a GitHub Release (the included workflow does this on a tag). npm is optional and not required for listing.
-3. Fork `awesome-dsh-plugin/awesome-dsh-plugin`, add `data/plugins/<owner>__dsh-health-management.yml` from the template, and open a PR (the guide allows at most 3 entries per PR; a repository must be at least 1 day old).
-4. Optional: the repository already includes `index.json` for the host’s native **Discover → Index sources**.
+1. The repository declares `dsh.bundle`, has the `dsh-plugin` topic, and is at
+   least 1 day old.
+2. The install sources are the GitHub source and the prebuilt
+   `dsh-health-management.tgz` attached to a GitHub Release (the included
+   workflow does this on a tag). npm is optional and not required for listing.
+3. The `icon:` is a GitHub-hosted 180×180 PNG and the `tarball:` URL uses a
+   version-free asset name on `latest/download/`, so it does not rot on the next
+   release.
+4. Screenshots are declared in this repository via
+   [`screenshots.json`](screenshots.json) (four relative paths).
+5. The repository already includes `index.json` for the host's native
+   **Discover → Index sources**.
 
 ## License
 

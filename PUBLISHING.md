@@ -53,17 +53,31 @@ git push
 
 ## 4. Curated awesome-dsh-plugin listing
 
-1. Fork `https://github.com/awesome-dsh-plugin/awesome-dsh-plugin`.
-2. Copy `market/hebin-cl__dsh-health-management.yml` to
-   `data/plugins/hebin-cl__dsh-health-management.yml`.
-3. Open a PR; use `market/PR-BODY.md` as the description.
-4. The repository must be **at least 1 day old**, must declare `dsh.bundle`
-   (this one does), and must have the `dsh-plugin` topic (it does).
-5. The guide allows at most 3 entries per PR. Keep the description factual; the
-   reviewers check it against the code.
+Status: **submission PR opened** —
+<https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/15394>.
 
-Once merged, the plugin is searchable in the **dshmarket** Discover tab and the
-site; install works from GitHub source or the release tarball.
+The submission is **one file**: `data/plugins/hebin-cl__dsh-health-management.yml`,
+kept here as `market/hebin-cl__dsh-health-management.yml`. The PR body is
+`market/PR-BODY.md`. The branch lives on the `hebin-cl/awesome-dsh-plugin` fork as
+`add-dsh-health-management` and is a single commit on top of upstream `main`, so a
+maintainer can rebase or merge it directly.
+
+Rules the entry has to satisfy (`contributing.md` in that repository):
+
+1. One PR adds at most 3 entries; this one adds 1.
+2. The repo declares `dsh.bundle` (it does) and carries the `dsh-plugin` topic
+   (it does), and is at least 1 day old (created 2026-11-13).
+3. `description.en` states what the plugin does and must match the code; the
+   `zh` line is optional.
+4. `icon:` must be a GitHub-hosted raster image — here `assets/icon-180.png`.
+5. `tarball:` must be an `https` `.tgz` on GitHub release hosting; the asset name
+   is version-free so `latest/download/` does not rot on the next release.
+6. Screenshots are declared in **this** repository via `screenshots.json`
+   (relative paths, 1-8 images).
+
+Once merged, the catalog rebuilds automatically and the plugin becomes
+searchable in the **dshmarket** Discover tab and installable with one click
+(GitHub source or the release tarball).
 
 ## 5. Optional future npm release
 

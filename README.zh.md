@@ -92,10 +92,16 @@ smoke 使用临时目录，不触碰真实 `.dsh-health/` 数据。
 
 ## 上架到 DSH 插件市场
 
-- 投稿模板：[`market/awesome-dsh-plugin-entry.yml`](market/awesome-dsh-plugin-entry.yml)。
-- 步骤：创建/推送 GitHub 仓库 → 加 `dsh-plugin` topic → 使用 GitHub 源码或 Release tarball（npm 可选，本次未发布）→ fork `awesome-dsh-plugin/awesome-dsh-plugin`，把 `market/hebin-cl__dsh-health-management.yml` 复制为 `data/plugins/hebin-cl__dsh-health-management.yml`，提 PR。
-- 仓库需创建满 1 天；一个 PR 最多 3 条；描述必须与代码一致。
-- 原生 Discover 索引：仓库已包含 `index.json`（指向初始发布 commit），在 **Plugins → Discover → Index sources** 添加 `https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json` 即可；重写历史或发新 tag 后运行 `node scripts/build-market-index.mjs --owner hebin-cl --source git` 重新生成。
+- 已向精选目录 [`awesome-dsh-plugin`](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 提交 PR
+  [#15394](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/15394)，
+  条目文件为 [`market/hebin-cl__dsh-health-management.yml`](market/hebin-cl__dsh-health-management.yml)，
+  PR 描述见 [`market/PR-BODY.md`](market/PR-BODY.md)；合并后可在 **dshmarket / Discover** 搜索并一键安装。
+- 收录要求：仓库声明 `dsh.bundle`、带 `dsh-plugin` topic、创建满 1 天；一个 PR 最多 3 条；描述必须与代码一致；
+  `icon:` 只能是 GitHub 托管位图，`tarball:` 用不带版本号的文件名；截图由本仓库的
+  [`screenshots.json`](screenshots.json) 声明。npm 可选，本次未发布。
+- 原生 Discover 索引：仓库已包含 `index.json`（指向 `v1.3.0` 标签提交），在 **Plugins → Discover → Index sources**
+  添加 `https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json` 即可；重写历史或发新 tag 后运行
+  `node scripts/build-market-index.mjs --owner hebin-cl --source git` 重新生成。
 
 ## 许可
 

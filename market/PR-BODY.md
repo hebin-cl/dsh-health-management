@@ -1,55 +1,17 @@
-# Add dsh-health-management
+Adds one entry, `data/plugins/hebin-cl__dsh-health-management.yml`.
 
-## Repository
+- [x] `package.json` declares `dsh.bundle` (`./cordis.patch.yml` inserts `dsh-health`) plus `dsh.client` for the browser panel.
+- [x] Repository created 2026-11-13 — over 1 day old.
+- [x] `dsh-plugin` topic is set.
+- [x] `category: tools` — it ships a Web panel and a family of `health_*` agent tools over one shared store.
+- [x] Descriptions state what it does; no superlatives.
+- [x] `tarball:` is a version-free asset name on `latest/download/`, so it will not rot on the next release.
+- [x] `icon:` is the repository's 180×180 PNG; `screenshots.json` declares four relative screenshots.
+- [x] npm is not published for this release — optional per the guide, so installs go through the GitHub source or the release tarball.
+- [x] `node scripts/check.mjs` → 259/259 checks pass; plain ESM, no build step.
 
-https://github.com/hebin-cl/dsh-health-management
+**What it does.** Family health records for up to 8 members: vitals, labs, body composition, meals, water, sleep and training minutes. Two management-goal templates — `metabolic` (core indicators with reference bands and target gaps) and `lean_muscle` (a 12-week season with a weekly ledger and a reference-band/trend statement); a health archive with condition tags, progress photos and medical-document records; a local-only invite squad; and a Discover tab with a Hangzhou Yuhang venue pilot taken from public sources. The agent tools and the Web panel read and write the same local store.
 
-## Category
+**Scope.** Records and descriptive statistics only. No diagnosis, treatment, medication advice, personalised training plans, recipes or effect claims; reference ranges are population values, not personal targets. Data stays in the local DSH profile, and the plugin makes no outbound requests — its external links (map search, source citations) are opened by the user.
 
-`tools`
-
-## What it does
-
-Family health records and management goals for DeepSeek Harness:
-
-- Up to 8 family members and 20 metrics (blood pressure, glucose, lipids, uric acid, body composition, protein, water, sleep, training minutes).
-- Four focused tabs: overview, a 12-week lean-muscle season, archive (trends/photos/medical documents), and discover.
-- Season checkpoints W4/W8/W12, weekly ledger, season share card, and a local-only invite squad MVP with behaviour-only leaderboard.
-- Body-composition statement with reference bands and a season baseline delta — observation-only, never scored.
-- Progress photos (daily shot, wall, two-photo compare, season compare); files stay local.
-- Health archive with condition tags kept separate from management goals.
-- Discover includes a Hangzhou Yuhang district pilot with 10 public/community/specialty venues, source links, search, filters and local favourites.
-- Deposits use the unit **笔**; season time uses weeks.
-- Agent tools share the same data as the Web panel.
-
-## Safety
-
-Records and descriptive statistics only. No diagnosis, treatment, medication advice, personalised training plan, recipe, supplement advice, or effect promises. Reference ranges are population references, not personal targets.
-
-## Checklist
-
-- [x] `package.json` declares `dsh.bundle` and `dsh.client`.
-- [x] `cordis.patch.yml` inserts the plugin.
-- [x] No build step; source is plain ESM/JS.
-- [x] Install sources: GitHub source + release tarball (npm not published in this release).
-- [x] Tests: `node scripts/check.mjs` → 259/259 smoke checks.
-- [x] Icon: 180×180 PNG.
-- [x] Screenshots: `screenshots.json` in the repository (visual baseline; 1.3 captures follow).
-- [x] Repository has the `dsh-plugin` topic.
-- [x] Repository will be at least 1 day old before this PR is opened.
-
-## Install
-
-```sh
-dsh plugin --profile <profile> add github:hebin-cl/dsh-health-management
-```
-
-Or install the release tarball from
-`https://github.com/hebin-cl/dsh-health-management/releases/latest/download/dsh-health-management.tgz`.
-
-## Notes
-
-The hero visual is a user-provided photograph; see `THIRD_PARTY_NOTICES.md`. The
-code is MIT-licensed; the image is not covered by the MIT grant. The squad is a
-local-only MVP (no remote server); the Yuhang venue data is a single-district
-pilot from public sources, not a live booking API.
+**Rights.** Code is MIT. The dashboard's hero photograph is the repository owner's own image, declared in `THIRD_PARTY_NOTICES.md`, and is not covered by the MIT grant.
