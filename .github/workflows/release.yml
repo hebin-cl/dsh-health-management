@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # A release opened through the API (draft first, then published) also builds
+  # and attaches the tarball. Releases the workflow itself creates use the
+  # default token, which GitHub does not turn into new events, so this trigger
+  # cannot loop back into the run above.
+  release:
+    types: [created]
 
 permissions:
   contents: write
@@ -19,6 +25,9 @@ jobs:
       - run: node scripts/check.mjs
       - run: npm pack
       - run: mv dsh-health-management-*.tgz dsh-health-management.tgz
-      - run: gh release create "${GITHUB_REF_NAME}" dsh-health-management.tgz --generate-notes
+      - name: Attach the tarball (create the release when it does not exist yet)
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" dsh-health-management.tgz --clobber \
+            || gh release create "${GITHUB_REF_NAME}" dsh-health-management.tgz --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

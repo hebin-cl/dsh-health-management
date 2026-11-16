@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.1 — 2026-11-16
+
+- Panel HTTP routes now ask the host's own request gate (`ctx.connection.requestRejection`)
+  before answering: the Host/Origin fence and browser login that DSH applies to its own API
+  also apply to `/api/dsh-health/*`. Bare `webServer` routes never passed through it, so a page
+  open in the user's browser could call them. Hosts without the service keep the old behaviour,
+  so the plugin still loads on DSH versions that predate it.
+- Refusals are answered with the host's status (401/403) and no data; nothing else changes in the
+  routes, the tool surface or the local storage format.
+
 ## 1.3.0 — 2026-11-14
 
 - Four main tabs: overview, season, archive, discover.

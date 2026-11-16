@@ -623,6 +623,52 @@ export function apply(ctx, config) {
     })),
   )
 
+  // -------------------------------------------------- host request gate
+  //
+  // Routes registered on the bare `webServer` never pass through the host's
+  // own Host/Origin fence and browser login, so a page open in the user's
+  // browser could call this panel's routes. Ask the host's Connection service
+  // for the verdict it would give its own API (#603) and answer with it. A
+  // host that predates that service keeps the routes exactly as they were.
+
+  /** @returns {number|undefined} the host's rejection status for this request. */
+  function admissionStatus(request) {
+    const connection = typeof ctx.get === 'function' ? ctx.get('connection') : undefined
+    const gate = connection?.requestRejection
+    if (typeof gate !== 'function') return undefined
+    try {
+      const status = gate.call(connection, request)
+      return typeof status === 'number' ? status : undefined
+    } catch {
+      return 500
+    }
+  }
+
+  /** @returns {Response|undefined} a refusal to answer with, or undefined to proceed. */
+  function refusal(request) {
+    const status = admissionStatus(request)
+    if (status === undefined) return undefined
+    return new Response(status === 401 ? '登录后才能访问健康数据。' : '请求未被宿主接纳。', {
+      status,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+      },
+    })
+  }
+
+  /** @returns {boolean} true when the request was refused and answered here. */
+  function refuseHandler(req, res) {
+    const status = admissionStatus(req)
+    if (status === undefined) return false
+    writeJson(res, status, {
+      ok: false,
+      error: status === 401 ? '登录后才能访问健康数据。' : '请求未被宿主接纳。',
+    })
+    return true
+  }
+
   // -------------------------------------------------- panel-facing HTTP routes
   //
   // The Web panel is a plain browser module with no Host RPC handle, so the
@@ -635,6 +681,8 @@ export function apply(ctx, config) {
       kind: 'exact',
       path: '/api/dsh-health/overview',
       resource: async (request) => {
+        const denied = refusal(request)
+        if (denied) return denied
         await ready
         const url = new URL(request.url, 'http://localhost')
         const member = url.searchParams.get('member') ?? undefined
@@ -652,6 +700,8 @@ export function apply(ctx, config) {
       kind: 'exact',
       path: '/api/dsh-health/photo',
       resource: async (request) => {
+        const denied = refusal(request)
+        if (denied) return denied
         await ready
         const url = new URL(request.url, 'http://localhost')
         const id = url.searchParams.get('id')
@@ -678,7 +728,9 @@ export function apply(ctx, config) {
     ctx.webServer.register({
       kind: 'exact',
       path: '/api/dsh-health/hero-art',
-      resource: async () => {
+      resource: async (request) => {
+        const denied = refusal(request)
+        if (denied) return denied
         try {
           const info = await stat(HERO_ART_PATH)
           if (!heroArtCache || info.mtimeMs !== heroArtMtime) {
@@ -707,6 +759,7 @@ export function apply(ctx, config) {
       // WebRoute (handler) rather than WebResourceRoute: resource routes only
       // answer GET/HEAD (405 otherwise), while mutations arrive via POST.
       handler: async (req, res) => {
+        if (refuseHandler(req, res)) return
         await ready
         if (req.method !== 'POST') {
           writeJson(res, 405, { ok: false, error: '只接受 POST。' })
@@ -729,10 +782,14 @@ export function apply(ctx, config) {
     ctx.webServer.register({
       kind: 'exact',
       path: '/api/dsh-health/venues',
-      resource: async () => json({
-        ok: true,
-        data: { region: VENUE_REGION, venues: YUYANG_VENUES },
-      }),
+      resource: async (request) => {
+        const denied = refusal(request)
+        if (denied) return denied
+        return json({
+          ok: true,
+          data: { region: VENUE_REGION, venues: YUYANG_VENUES },
+        })
+      },
     }),
   )
 
@@ -741,6 +798,7 @@ export function apply(ctx, config) {
       kind: 'exact',
       path: '/api/dsh-health/clipboard',
       handler: async (req, res) => {
+        if (refuseHandler(req, res)) return
         if (req.method !== 'POST') {
           writeJson(res, 405, { ok: false, error: '只接受 POST。' })
           return
@@ -767,6 +825,8 @@ export function apply(ctx, config) {
       kind: 'exact',
       path: '/api/dsh-health/community/leaderboard',
       resource: async (request) => {
+        const denied = refusal(request)
+        if (denied) return denied
         await ready
         const url = new URL(request.url, 'http://localhost')
         const code = url.searchParams.get('code') ?? ''
@@ -780,6 +840,7 @@ export function apply(ctx, config) {
       kind: 'exact',
       path: '/api/dsh-health/community',
       handler: async (req, res) => {
+        if (refuseHandler(req, res)) return
         await ready
         if (req.method !== 'POST') {
           writeJson(res, 405, { ok: false, error: '只接受 POST。' })
