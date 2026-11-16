@@ -3,12 +3,18 @@ name: Release
 on:
   push:
     tags: ['v*']
-  # A release opened through the API (draft first, then published) also builds
-  # and attaches the tarball. Releases the workflow itself creates use the
-  # default token, which GitHub does not turn into new events, so this trigger
-  # cannot loop back into the run above.
   release:
     types: [created]
+  # A tag made through the API does not produce a push event, and a draft
+  # release does not start a run either, so the build can also be dispatched by
+  # hand with the tag to attach. The release the workflow itself creates uses
+  # the default token, which GitHub does not turn into new events.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and attach the tarball to (for example v1.3.1)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -22,12 +28,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Resolve the tag
+        id: tag
+        run: |
+          tag="${{ github.event.release.tag_name || inputs.tag || github.ref_name }}"
+          if [ -z "$tag" ]; then
+            echo "::error::No tag to release"
+            exit 1
+          fi
+          echo "value=$tag" >> "$GITHUB_OUTPUT"
+          echo "releasing $tag"
       - run: node scripts/check.mjs
       - run: npm pack
       - run: mv dsh-health-management-*.tgz dsh-health-management.tgz
       - name: Attach the tarball (create the release when it does not exist yet)
         run: |
-          gh release upload "${GITHUB_REF_NAME}" dsh-health-management.tgz --clobber \
-            || gh release create "${GITHUB_REF_NAME}" dsh-health-management.tgz --generate-notes
+          gh release upload "${{ steps.tag.outputs.value }}" dsh-health-management.tgz --clobber \
+            || gh release create "${{ steps.tag.outputs.value }}" dsh-health-management.tgz --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
