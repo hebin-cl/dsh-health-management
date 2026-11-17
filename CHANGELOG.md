@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.2 — 2026-11-17
+
+- Reading a stored record whose metric code this build does not ship no longer
+  fails the whole panel. A newer build may have written a metric this release
+  does not have (the preview build's meal-photo estimate stores `kcal`); the
+  value is now shown by its code instead of throwing
+  `Cannot read properties of undefined (reading 'name')` from the overview.
+- The photo document accepts photo kinds this build does not render. An unknown
+  legacy kind (for example the preview build's diet `meal` photos) is kept in
+  storage, does not block startup, and is hidden from the photo wall instead of
+  being mislabelled as a body shot.
+- A personal goal target that references a metric no longer in the catalog is
+  rejected with a clear message instead of crashing.
+
 ## 1.3.1 — 2026-11-16
 
 - Panel HTTP routes now ask the host's own request gate (`ctx.connection.requestRejection`)

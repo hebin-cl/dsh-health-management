@@ -983,6 +983,62 @@ const leftSquad = await community.leave({ code: createdSquad.data.code, token: j
 check('squad leave removes the member', leftSquad.ok && leftSquad.data.remaining === 1, leftSquad)
 await rm(communityDir, { recursive: true, force: true })
 
+console.log('\n[version skew: data written by another build]')
+// A document can outlive the build that wrote it: a newer build may have
+// recorded a metric or a photo kind this build does not ship, or this build may
+// have dropped one. Reading must never fail the whole panel, and must never
+// silently label a foreign photo as a body shot.
+const legacyDir = await mkdtemp(join(tmpdir(), 'dsh-health-legacy-'))
+await writeFile(join(legacyDir, 'members.json'), JSON.stringify({
+  version: 1,
+  members: [{
+    id: 'legacy-member', name: '旧数据', relation: 'self', sex: 'male',
+    riskLevel: 'low', targets: {}, note: '', createdAt: 1, updatedAt: 1,
+  }],
+}))
+await writeFile(join(legacyDir, 'records.json'), JSON.stringify({
+  version: 1,
+  records: [{
+    id: 'legacy-record', memberId: 'legacy-member', memberName: '旧数据',
+    measuredAt: '2026-11-15 09:16', context: 'random',
+    values: { kcal: 580, protein: 20 }, source: 'image', note: '', createdAt: 2,
+  }],
+}))
+await writeFile(join(legacyDir, 'photos.json'), JSON.stringify({
+  version: 1,
+  photos: [{
+    id: 'legacy-photo', memberId: 'legacy-member', memberName: '旧数据',
+    kind: 'meal', takenAt: '2026-11-15 09:16', note: '',
+    filePath: join(legacyDir, 'photos', 'legacy-member', 'meal.jpg'),
+    fileName: 'meal.jpg', size: 1, mime: 'image/jpeg', createdAt: 3,
+  }],
+}))
+const legacy = new HealthService(legacyDir)
+let legacyInitError = null
+try {
+  await legacy.init()
+} catch (error) {
+  legacyInitError = error
+}
+check('an unknown photo kind does not block startup', legacyInitError === null,
+  legacyInitError && legacyInitError.message)
+
+const legacyOverview = await legacy.overview('legacy-member')
+check('an unknown metric code does not fail the overview', legacyOverview.ok === true,
+  legacyOverview.ok ? undefined : legacyOverview.error)
+const legacyRow = (legacyOverview.ok ? legacyOverview.recent : [])
+  .flatMap((record) => record.values)
+  .find((entry) => entry.code === 'kcal')
+check('the unknown metric is still shown, by code',
+  legacyRow !== undefined
+  && legacyRow.name === 'kcal'
+  && legacyRow.unit === ''
+  && legacyRow.display === '580', legacyRow)
+const legacyPhotos = await legacy.listPhotos('legacy-member')
+check('unknown photo kinds stay out of the photo wall',
+  legacyPhotos.ok === true && legacyPhotos.total === 0, legacyPhotos)
+await rm(legacyDir, { recursive: true, force: true })
+
 await rm(dir, { recursive: true, force: true })
 const totalChecks = passes + failures
 console.log(`\n${failures === 0 ? 'ALL PASSED' : `${failures} FAILURE(S)`} · ${passes}/${totalChecks} checks`)
