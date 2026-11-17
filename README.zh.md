@@ -6,6 +6,7 @@
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
 [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
 [![release v1.3.1](https://img.shields.io/badge/release-v1.3.1-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
+[![npm](https://img.shields.io/npm/v/dsh-health-management?style=flat-square&color=D7FF3F)](https://www.npmjs.com/package/dsh-health-management)
 
 <p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="健康管理插件封面" width="100%"></p>
 
@@ -14,6 +15,8 @@
 ## 30 秒安装
 
 ```sh
+# npm
+dsh plugin --profile <your-profile> add dsh-health-management
 # GitHub 源码
 dsh plugin --profile <your-profile> add github:hebin-cl/dsh-health-management
 # Release tarball
