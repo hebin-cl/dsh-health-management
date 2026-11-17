@@ -5,7 +5,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-0B0D12?style=flat-square)](https://github.com/topics/dsh-plugin)
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
 [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
-[![release v1.3.1](https://img.shields.io/badge/release-v1.3.1-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
+[![release v1.3.2](https://img.shields.io/badge/release-v1.3.2-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
 [![npm](https://img.shields.io/npm/v/dsh-health-management?style=flat-square&color=D7FF3F)](https://www.npmjs.com/package/dsh-health-management)
 
 <p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="健康管理插件封面" width="100%"></p>
@@ -31,10 +31,15 @@ dsh plugin --profile <your-profile> add https://github.com/hebin-cl/dsh-health-m
 
 > 仅做记录与描述性统计；不提供诊断、治疗、用药、训练计划、食谱或补剂建议；参考区间为人群参考值，不等于个人目标值。
 
-## 1.3.1 更新
+## 1.3.2 更新
+
+- 当某条记录带有当前版本不认识的指标代码时（例如由更新的预览版写入的数据），面板不再整页失败，而是按代码展示该值。
+- 照片文档接受当前版本不渲染的 kind：未知的旧 kind 保留在存储中、从照片墙隐藏，不再阻塞启动。
+- 数据与存储格式均无变化。
+
+**1.3.1 回顾**
 
 - 面板路由先经宿主自带的请求闸门（Host/Origin 校验 + 浏览器登录）再响应；被拒绝的请求返回宿主同款 401/403，且不返回数据。
-- 数据与存储格式均无变化。
 
 **1.3.0 回顾**
 

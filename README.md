@@ -5,7 +5,7 @@ Local-only family health records and two management goals for DeepSeek Harness.
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-0B0D12?style=flat-square)](https://github.com/topics/dsh-plugin)
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
 [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
-[![release v1.3.1](https://img.shields.io/badge/release-v1.3.1-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
+[![release v1.3.2](https://img.shields.io/badge/release-v1.3.2-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
 [![npm](https://img.shields.io/npm/v/dsh-health-management?style=flat-square&color=D7FF3F)](https://www.npmjs.com/package/dsh-health-management)
 
 <p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="Health Management for DeepSeek Harness cover" width="100%"></p>
@@ -31,10 +31,15 @@ Lean Account overview: four behaviour accounts, the weekly ledger and the body-c
 
 > Records and descriptive statistics only; no diagnosis, treatment, medication, training-plan, recipe or supplement advice; reference ranges are population references, not personal targets.
 
-## What's new in 1.3.1
+## What's new in 1.3.2
+
+- The panel keeps working when a stored record carries a metric this build does not ship (for example data written by a newer preview build): the value is shown by its code instead of failing the whole overview.
+- Photo documents accept kinds this build does not render; an unknown legacy kind stays in storage and is hidden from the photo wall instead of blocking startup.
+- No data or storage change.
+
+**Also in 1.3.1**
 
 - Panel routes now ask the host's own request gate (Host/Origin + browser login) before answering; refusals get the host's 401/403 and no data.
-- No data or storage change.
 
 **Also in 1.3.0**
 

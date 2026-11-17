@@ -1,12 +1,13 @@
 # Publishing this plugin
 
-Status: **published to GitHub** at
-<https://github.com/hebin-cl/dsh-health-management> on `main`, with a public
-`v1.3.0` release and a validated format-1 `index.json`.
+Status: **published to GitHub and npm** as `dsh-health-management`. `main` is at
+the current release, releases are tagged `v*` and built by the Release workflow
+(GitHub tarball asset), and `index.json` is a validated format-1 market index
+pinned to the release commit.
 
-npm is intentionally **not published** for this release. GitHub source and the
-release tarball are the supported install sources. The npm package name stays
-`dsh-health-management` for a future release.
+npm is published from the same package (`npm publish`, or the registry HTTP API
+with `NPM_TOKEN`). GitHub source, the release tarball and npm all install the
+same code.
 
 ## 1. Install sources
 
@@ -79,21 +80,25 @@ Once merged, the catalog rebuilds automatically and the plugin becomes
 searchable in the **dshmarket** Discover tab and installable with one click
 (GitHub source or the release tarball).
 
-## 5. Optional future npm release
+## 5. npm release
 
-If you later publish to npm:
+The package is also published to npm, from a machine holding a publish token for
+`dsh-health-management`:
 
 ```sh
 npm login
 npm publish
-node scripts/build-market-index.mjs --owner hebin-cl --source npm
-git add index.json
-git commit -m "chore: switch market index to npm"
-git push
 ```
 
-Keep `package.json.repository` pointed at the GitHub repository so the curated
-catalog can link npm and GitHub automatically.
+`release/_npm_publish.mjs` publishes one exact tarball through the registry HTTP
+API using `NPM_TOKEN` (or `%USERPROFILE%\.npm-token`):
+
+```sh
+node release/_npm_publish.mjs <tarball.tgz> <repo>/package.json
+```
+
+Keep the release tarball and npm at the same version. `index.json` may point at
+either source (`--source npm` or `--source git`).
 
 ## 6. Asset rights
 
