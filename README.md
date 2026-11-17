@@ -57,36 +57,19 @@ Squad and venue features are MVP/pilot and labelled as such in the UI.
 
 ## Install
 
-Requires **DeepSeek Harness `>=0.2.2-rc.1 <0.3.0`** and Node.js 22+.
+Requires **DeepSeek Harness `>=0.2.2-rc.1 <0.3.0`** and Node.js 22+. The install commands are at the top of this page; after installing, refresh the Web UI (or restart the host if it asks).
 
-### From GitHub (recommended)
+### Find it in the DSH plugin market
 
-```sh
-dsh plugin --profile <your-profile> add github:hebin-cl/dsh-health-management
+The plugin is listed in the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) catalog under **tools** — search `dsh-health-management` or `health management` in the **dshmarket / Discover** tab.
+
+If your host cannot reach that catalog, add the included native format-1 index from **Plugins → Discover → Index sources**:
+
+```text
+https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json
 ```
 
-### From a release tarball
-
-Download `dsh-health-management.tgz` from [Releases](https://github.com/hebin-cl/dsh-health-management/releases) and install the local file:
-
-```sh
-dsh plugin --profile <your-profile> add ./dsh-health-management.tgz
-```
-
-The npm package is **not published** in this release; GitHub or the release tarball are the supported sources. The package name stays `dsh-health-management` for a future npm release.
-
-After install, refresh the Web UI (or restart the host if the profile asks for it).
-
-### Discover it in the DSH plugin market
-
-- A submission PR is open against the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) registry ([#15394](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/15394)); the entry is [`market/hebin-cl__dsh-health-management.yml`](market/hebin-cl__dsh-health-management.yml). Once merged, it becomes searchable in the **dshmarket** Discover tab and installable with one click.
-- Until then, add the included native format-1 index from **Plugins → Discover → Index sources**:
-
-  ```
-  https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json
-  ```
-
-  `index.json` is pinned to the initial release commit. If you rewrite history or publish a new tag, regenerate it with `node scripts/build-market-index.mjs --owner hebin-cl --source git`.
+`index.json` is pinned to the v1.3.0 release commit; after a new tag, regenerate it with `node scripts/build-market-index.mjs --owner hebin-cl --source git`.
 
 ## Quick start
 

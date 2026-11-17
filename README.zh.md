@@ -57,19 +57,19 @@ dsh plugin --profile <your-profile> add https://github.com/hebin-cl/dsh-health-m
 
 ## 安装
 
-需要 **DeepSeek Harness `>=0.2.2-rc.1 <0.3.0`** 与 Node.js 22+。
+需要 **DeepSeek Harness `>=0.2.2-rc.1 <0.3.0`** 与 Node.js 22+。安装命令在页首；安装后刷新 Web UI，若宿主提示需要重启，按提示重启。
 
-```sh
-# GitHub 源码（推荐）
-dsh plugin --profile <profile> add github:hebin-cl/dsh-health-management
+### 在 DSH 插件市场里找到它
 
-# Release tarball
-dsh plugin --profile <profile> add ./dsh-health-management.tgz
+插件已收录在精选目录 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 的 **tools** 分类下——在 **dshmarket / 发现（Discover）** 里搜索 `dsh-health-management` 或 `health management` 即可。
+
+如果宿主访问不到该目录，也可以把本仓库自带的 format-1 索引加到 **Plugins → 发现 → 索引源（Index sources）**：
+
+```text
+https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/index.json
 ```
 
-本次发布**未发布 npm 包**；GitHub 源码或 Release tarball 是受支持的安装来源。包名保留为 `dsh-health-management`，便于以后发布 npm。
-
-安装后刷新 Web UI；如果宿主提示需要重启，按提示重启。
+`index.json` 目前钉在 v1.3.0 的发布提交上；打新 tag 后用 `node scripts/build-market-index.mjs --owner hebin-cl --source git` 重新生成。
 
 ## 快速开始
 
