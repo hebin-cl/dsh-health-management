@@ -5,7 +5,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-0B0D12?style=flat-square)](https://github.com/topics/dsh-plugin)
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
 [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
-[![release v1.3.2](https://img.shields.io/badge/release-v1.3.2-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
+[![release v1.4.0](https://img.shields.io/badge/release-v1.4.0-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
 [![npm](https://img.shields.io/npm/v/dsh-health-management?style=flat-square&color=D7FF3F)](https://www.npmjs.com/package/dsh-health-management)
 
 <p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="健康管理插件封面" width="100%"></p>
@@ -31,10 +31,16 @@ dsh plugin --profile <your-profile> add https://github.com/hebin-cl/dsh-health-m
 
 > 仅做记录与描述性统计；不提供诊断、治疗、用药、训练计划、食谱或补剂建议；参考区间为人群参考值，不等于个人目标值。
 
-## 1.3.2 更新
+## 1.4.0 更新
 
-- 当某条记录带有当前版本不认识的指标代码时（例如由更新的预览版写入的数据），面板不再整页失败，而是按代码展示该值。
-- 照片文档接受当前版本不渲染的 kind：未知的旧 kind 保留在存储中、从照片墙隐藏，不再阻塞启动。
+- **健康浮标「小肌霸」**：Web 面板上可拖动的健康浮标，配有独立的 DSH 设置页——名称、内置形象或上传图片、显示/隐藏、大小、保存位置、提醒间隔、免打扰时段、气泡时长与桌面通知。它只读取聚合计数（今日记录数、进行中的目标），不对任何数值做评价；设置存于 `float.json`，同一台机器上的所有 DSH Web 窗口共享。
+- **饮食照片**：记录早餐/午餐/晚餐/加餐并附照片；可由支持图片的模型给出 kcal、蛋白质与菜品建议，**用户确认前不会写入**；估算路由可选自动或固定某个 provider/model。
+- **代谢管理重设计（代谢对账簿）**：行为账户（测/吃/动/睡）按笔数计入，指标对账单只做观察（腰围、血压、空腹血糖、TG、HDL-C 等），12 周复盘周期、周对账与可复制的就诊摘要；指标不做诊断式评分。
+- 成员新增身高（体重+身高可推导 BMI）与 `unknown` 风险等级。
+
+**1.3.2 回顾**
+
+- 记录中带有当前版本不认识的指标代码时按代码展示，不再整页失败；旧 kind 照片保留在存储中、从照片墙隐藏。
 - 数据与存储格式均无变化。
 
 **1.3.1 回顾**
@@ -52,13 +58,15 @@ dsh plugin --profile <your-profile> add https://github.com/hebin-cl/dsh-health-m
 
 ## 功能
 
-- **家庭成员**：最多 8 位；参考区间分性别，LDL-C 可按风险分层。
+- **家庭成员**：最多 8 位；参考区间分性别，LDL-C 可按风险分层；可填身高用于推导 BMI。
 - **默认「我」**：打开即展示「我」；只有用户主动添加成员后，才出现其他成员。
-- **指标**：血压、心率、空腹/餐后血糖、糖化血红蛋白、血脂、尿酸、体重、BMI、腰围、体脂率、骨骼肌量、蛋白质、饮水、睡眠、力量训练时长。
-- **管理目标**：`metabolic`（代谢综合征管理）与 `lean_muscle`（薄肌管理）。
-- **薄肌账户**：练/吃/睡/水四账户；每日存入；7×4 周对账；W4/W8/W12 检查点；赛季结算；开启新赛季不删历史。
+- **指标**：血压、心率、空腹/餐后血糖、糖化血红蛋白、血脂、尿酸、体重、BMI、腰围、体脂率、骨骼肌量、蛋白质、热量（kcal）、饮水、睡眠、力量训练时长。
+- **管理目标**：`metabolic`（代谢综合征管理，含 12 周复盘与可复制就诊摘要）与 `lean_muscle`（薄肌管理）。
+- **薄肌账户**：大练/蛋白/大睡/大水四账户；每日存入；7×4 周对账；W4/W8/W12 检查点；赛季结算；开启新赛季不删历史。
 - **体成分对账单**：体脂/体重/骨骼肌/腰围显示参考区间与赛季基线 delta，**不计分、不排名、不评分**。
 - **照片**：每日一拍、照片墙、两张对比、赛季对比；只存本机。
+- **饮食**：早餐/午餐/晚餐/加餐记录，可附照片与模型估算的 kcal/蛋白质；确认前不落库。
+- **健康浮标「小肌霸」**：可拖动，名称/形象/大小/位置/提醒间隔/免打扰/通知均可在设置中调整。
 - **健康档案**：病历、处方、检验报告、影像等；疾病标签与管理目标语义分离。
 - **Agent 工具**：`health_record`、`health_query`、`health_stats`、`health_goal_*`、`health_goal_review`、`health_goal_start_season`、`health_condition_*`、`health_document_*`、`health_member_*`、`health_metrics`、`health_diagnose`。
 - **深色仪表盘**：hero 与下方内容统一为石墨/荧光绿视觉；代谢视图保持克制。

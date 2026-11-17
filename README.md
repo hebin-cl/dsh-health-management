@@ -5,7 +5,7 @@ Local-only family health records and two management goals for DeepSeek Harness.
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-0B0D12?style=flat-square)](https://github.com/topics/dsh-plugin)
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
 [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
-[![release v1.3.2](https://img.shields.io/badge/release-v1.3.2-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
+[![release v1.4.0](https://img.shields.io/badge/release-v1.4.0-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
 [![npm](https://img.shields.io/npm/v/dsh-health-management?style=flat-square&color=D7FF3F)](https://www.npmjs.com/package/dsh-health-management)
 
 <p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="Health Management for DeepSeek Harness cover" width="100%"></p>
@@ -31,10 +31,16 @@ Lean Account overview: four behaviour accounts, the weekly ledger and the body-c
 
 > Records and descriptive statistics only; no diagnosis, treatment, medication, training-plan, recipe or supplement advice; reference ranges are population references, not personal targets.
 
-## What's new in 1.3.2
+## What's new in 1.4.0
 
-- The panel keeps working when a stored record carries a metric this build does not ship (for example data written by a newer preview build): the value is shown by its code instead of failing the whole overview.
-- Photo documents accept kinds this build does not render; an unknown legacy kind stays in storage and is hidden from the photo wall instead of blocking startup.
+- **Little Muscle King (小肌霸)** — a draggable floating health buddy on the Web panel, with its own DSH Settings page: name, built-in avatar or uploaded image, show/hide, size, saved position, reminder interval, quiet hours, bubble duration and optional desktop notifications. It only reads aggregate counts (records today, active goals) and never evaluates a value.
+- **Meal photos** — record breakfast / lunch / dinner / snack with a photo; an image-capable model can propose kcal, protein and items, and nothing is saved until you confirm. The estimation route is automatic or pinned to one provider/model in the panel.
+- **Metabolic management redesign** — behaviour accounts (测 / 吃 / 动 / 睡) counted as deposits, an observation-only indicator statement, a 12-week review cycle, weekly ledger and a copyable visit summary.
+- Members gain height (BMI derives from weight + height) and an `unknown` risk level.
+
+**Also in 1.3.2**
+
+- Stored records with a metric this build does not ship are shown by code instead of failing the panel; legacy photo kinds stay in storage but are hidden from the photo wall.
 - No data or storage change.
 
 **Also in 1.3.1**
@@ -52,13 +58,15 @@ Squad and venue features are MVP/pilot and labelled as such in the UI.
 
 ## Features
 
-- **Family members** — up to 8 profiles, sex-aware reference ranges, optional risk level for LDL-C targets.
+- **Family members** — up to 8 profiles, sex-aware reference ranges, optional risk level for LDL-C targets, optional height for BMI derivation.
 - **Me first** — opens on **我** (self); other members appear only after the user adds them.
-- **Metrics** — blood pressure, heart rate, fasting/postprandial glucose, HbA1c, lipids, uric acid, weight, BMI, waist, body fat, skeletal muscle, protein, water, sleep, strength-training minutes.
-- **Management goals** — `metabolic` (core metabolic monitoring) and `lean_muscle` (12-week lean account).
+- **Metrics** — blood pressure, heart rate, fasting/postprandial glucose, HbA1c, lipids, uric acid, weight, BMI, waist, body fat, skeletal muscle, protein, kcal, water, sleep, strength-training minutes.
+- **Management goals** — `metabolic` (core metabolic monitoring with a 12-week review cycle and a copyable visit summary) and `lean_muscle` (12-week lean account).
 - **Lean Account** — 大练 / 蛋白 / 大睡 / 大水 accounts; daily deposits; 7×4 weekly ledger; season checkpoints; season review; new season without deleting history.
 - **Body-composition statement** — body fat, weight, muscle and waist are shown with reference bands and a season baseline delta; **never scored as pass/fail**.
 - **Progress photos** — daily shot, photo wall, two-photo compare, season compare; files stay on this machine.
+- **Meals** — breakfast / lunch / dinner / snack records with a photo and optional vision-model kcal/protein estimate; nothing is stored before confirmation.
+- **Little Muscle King (小肌霸)** — draggable floating health buddy with configurable name, avatar, size, position, reminder interval, quiet hours and notifications in Settings.
 - **Health archive** — medical records, prescriptions, lab reports, imaging and other documents; condition tags are separate from management goals.
 - **Agent tools** — the model can read/write the same data: `health_record`, `health_query`, `health_stats`, `health_goal_*`, `health_goal_review`, `health_goal_start_season`, `health_condition_*`, `health_document_*`, `health_member_*`, `health_metrics`, `health_diagnose`.
 - **Dark, focused UI** — the hero and the content below share one graphite/neon design; the metabolic view remains deliberately restrained.

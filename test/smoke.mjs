@@ -12,7 +12,7 @@
 import { mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { HealthService, MAX_MEMBERS, normalizeTimestamp } from '../lib/service.js'
+import { HealthService, MAX_MEMBERS, MEAL_TYPES, RISK_LEVELS, normalizeTimestamp } from '../lib/service.js'
 import { CommunityStore } from '../lib/community.js'
 import { VENUE_REGION, YUYANG_VENUES } from '../lib/venues.js'
 import { METRICS, evaluate, resolveBand } from '../lib/metrics.js'
@@ -130,6 +130,9 @@ check('uric acid female band 360', resolveBand(ua, femaleMember).band.high === 3
 const ldl = METRICS.find((m) => m.code === 'ldl')
 check('LDL high-risk target 2.6', resolveBand(ldl, maleMember).band.high === 2.6, resolveBand(ldl, maleMember))
 check('LDL low-risk target 3.4', resolveBand(ldl, femaleMember).band.high === 3.4, resolveBand(ldl, femaleMember))
+check('LDL with unassessed risk says so instead of "low risk"',
+  String(resolveBand(ldl, femaleMember).band.label).includes('风险未评估'),
+  resolveBand(ldl, femaleMember))
 const waist = METRICS.find((m) => m.code === 'waist')
 check('waist male band 90', resolveBand(waist, maleMember).band.high === 90, resolveBand(waist, maleMember))
 check('waist female band 85', resolveBand(waist, femaleMember).band.high === 85, resolveBand(waist, femaleMember))
@@ -227,7 +230,13 @@ console.log('\n[goals: catalog]')
 const templates = service.goalTemplates()
 const leanTpl = templates.templates.find((t) => t.code === 'lean_muscle')
 check('two goal templates', templates.ok && templates.templates.length === 2, templates.templates?.length)
-check('metabolic template targets core metrics', templates.templates.find((t) => t.code === 'metabolic')?.targets.length === 7)
+const metabolicTpl = templates.templates.find((t) => t.code === 'metabolic')
+check('metabolic template targets core metrics plus extras',
+  metabolicTpl?.targets.length >= 12
+  && ['waist', 'sbp', 'dbp', 'fpg', 'tg', 'hdl'].every((code) => metabolicTpl.targets.some((t) => t.metric === code)))
+check('metabolic template is a 12-week review cycle',
+  metabolicTpl?.cycleKind === 'review' && metabolicTpl?.season?.weeks === 12)
+check('metabolic template carries a playbook', (metabolicTpl?.playbook?.length ?? 0) >= 8)
 check('lean muscle template has diet/training dimensions', leanTpl?.dimensions.some((d) => d.code === 'training'))
 check('goal templates carry caveats', templates.templates.every((t) => t.notes.length > 0 && t.disclaimer))
 check('goal templates define quick-log fields',
@@ -267,7 +276,7 @@ check('overview starts with no goals', Array.isArray(bareOverview.goals) && bare
 
 console.log('\n[goals: set/update/validate]')
 const g1 = await service.setGoal('成员A', { code: 'metabolic', status: 'active', source: 'report', note: '医生建议管理代谢指标' })
-check('activate metabolic goal', g1.ok && g1.created === true && g1.goal.targets.length === 7, g1)
+check('activate metabolic goal', g1.ok && g1.created === true && g1.goal.targets.length >= 12, g1)
 const g2 = await service.setGoal('成员A', { code: 'metabolic', targets: { sbp: 130 } })
 check('update goal personal target', g2.ok && g2.created === false, g2)
 const badGoal = await service.setGoal('成员A', { code: 'nonsense' })
@@ -280,11 +289,25 @@ check('invalid goal status rejected', !badStatus.ok, badStatus)
 const dadGoals = await service.goalOverview('成员A')
 check('goal overview lists metabolic', dadGoals.ok && dadGoals.goals.some((g) => g.code === 'metabolic'), dadGoals)
 const metabolic = dadGoals.goals.find((g) => g.code === 'metabolic')
-check('goal summary carries coverage', metabolic.coverage.evaluable === 7 && metabolic.coverage.measured >= 3, metabolic.coverage)
+check('metabolic coverage counts the four behaviour accounts',
+  metabolic.coverage.evaluable === 4 && metabolic.coverage.measured >= 1, metabolic.coverage)
+check('metabolic goal carries a review cycle and four accounts',
+  metabolic.season?.kind === 'review' && metabolic.accounts.length === 4
+  && metabolic.accounts.every((account) => account.week?.days?.length === 7))
+check('metabolic statement shows the five core components',
+  metabolic.metabolic?.statement?.coverage?.total === 5
+  && metabolic.metabolic.statement.rows.filter((row) => row.role === 'core').length === 5,
+  metabolic.metabolic?.statement?.coverage)
+check('metabolic goal always carries a visit summary',
+  typeof metabolic.metabolic?.visitSummary?.text === 'string'
+  && /就诊摘要/.test(metabolic.metabolic.visitSummary.text)
+  && /不含任何诊断、治疗或用药建议/.test(metabolic.metabolic.visitSummary.disclaimer),
+  metabolic.metabolic?.visitSummary?.disclaimer)
 check('goal sbp row uses personal target', metabolic.targets.find((t) => t.metric === 'sbp')?.high === 130)
 check('goal waist row is sex-specific', metabolic.targets.find((t) => t.metric === 'waist')?.high === 90)
 check('goal sbp row evaluated as high', metabolic.targets.find((t) => t.metric === 'sbp')?.status === 'high')
-check('goal overview exposes tracking dimensions', metabolic.dimensions[0].metrics.length === 7)
+check('goal overview exposes the core tracking dimensions',
+  metabolic.dimensions.find((dimension) => dimension.code === 'core')?.metrics.length === 6)
 // "目标 <140" means 140 itself has not met the target.
 await service.setGoal('成员A', { code: 'metabolic', targets: { sbp: 140 } })
 const boundaryGoal = (await service.goalOverview('成员A')).goals.find((g) => g.code === 'metabolic')
@@ -387,6 +410,76 @@ await service.setGoal('成员4', { code: 'metabolic' })
 const waistBoundary = (await service.goalOverview('成员4')).goals.find((g) => g.code === 'metabolic')
   .targets.find((t) => t.metric === 'waist')
 check('waist boundary at 90 is not met', waistBoundary.status === 'high', waistBoundary)
+
+console.log('\n[goals: metabolic ledger]')
+// Seven distinct home-BP days inside the rolling window: the statement must
+// drop the earliest day and average the remaining six, never veto a high value.
+for (let offset = 0; offset >= -6; offset -= 1) {
+  await service.record({
+    member: '成员4',
+    measuredAt: stamp(offset, 7, 30),
+    context: offset % 2 === 0 ? 'morning' : 'evening',
+    values: { sbp: 132 + Math.abs(offset), dbp: 84 + Math.abs(offset) },
+  })
+}
+await service.record({ member: '成员4', measuredAt: stamp(0, 8, 10), context: 'morning', values: { sbp: 138, dbp: 88 } })
+await service.record({ member: '成员4', measuredAt: stamp(0, 9), context: 'lab', values: { fpg: 6.3, ppg: 8.2, hba1c: 6.1, tc: 5.1, tg: 2.1, ldl: 3.2, hdl: 0.92, ua: 430 } })
+await service.record({ member: '成员4', measuredAt: stamp(0, 20), values: { activity: 40, sugary: 500 } })
+await service.record({ member: '成员4', measuredAt: stamp(-1, 20), values: { activity: 30, sugary: 300 } })
+await service.record({ member: '成员4', measuredAt: stamp(-2, 20), values: { activity: 20 } })
+await service.record({ member: '成员4', measuredAt: stamp(0, 7), context: 'morning', values: { sleep: 7.5 } })
+await service.record({ member: '成员4', measuredAt: stamp(-1, 7), context: 'morning', values: { sleep: 6.5 } })
+await service.record({ member: '成员4', measuredAt: stamp(0, 12), mealType: 'lunch', values: { kcal: 620, protein: 28 } })
+const ledger = (await service.goalOverview('成员4')).goals.find((g) => g.code === 'metabolic')
+const ledgerBp = ledger.metabolic.statement.rows.find((row) => row.code === 'bp')
+check('metabolic BP drops the first day and shows the remaining mean',
+  ledgerBp.droppedFirstDay === true && ledgerBp.days7 === 6 && ledgerBp.single === false
+  && ledgerBp.valueLabel === '近 7 天均值', ledgerBp)
+check('metabolic BP statement keeps high values in the average',
+  ledgerBp.count7 >= 6 && typeof ledgerBp.currentDisplay === 'string' && /^\d+\/\d+$/.test(ledgerBp.currentDisplay), ledgerBp)
+const ledgerMove = ledger.accounts.find((account) => account.code === 'move')
+check('metabolic activity account sums minutes and counts >=30 min days',
+  ledgerMove.weekMinutes === 90 && ledgerMove.week.met === 2, ledgerMove)
+const ledgerSleep = ledger.accounts.find((account) => account.code === 'sleep')
+check('metabolic sleep account deposits only >=7h days', ledgerSleep.week.met === 1, ledgerSleep)
+const ledgerDiet = ledger.accounts.find((account) => account.code === 'diet')
+check('metabolic diet account deposits a recorded meal', ledgerDiet.today.met === true, ledgerDiet)
+check('metabolic labs are recognised as a cycle event',
+  ledger.metabolic.labs.hasCycleLab === true && ledger.metabolic.labs.cycleCount >= 1
+  && ledger.metabolic.labs.items.length >= 6, ledger.metabolic.labs)
+const ledgerHdl = ledger.metabolic.statement.rows.find((row) => row.code === 'hdl')
+check('metabolic HDL uses the CDS 1.04 floor and stays descriptive',
+  ledgerHdl.status === 'below' && ledgerHdl.band.low === 1.04 && !/诊断/.test(ledgerHdl.band.label ?? ''), ledgerHdl)
+const ledgerSugary = ledger.metabolic.sugary
+check('metabolic sugary is recorded weekly with no score',
+  ledgerSugary.weekMl === 800 && ledgerSugary.status === 'unknown', ledgerSugary)
+check('metabolic statement never aggregates "how many met"',
+  ledger.metabolic.statement.coverage.total === 5
+  && ledger.metabolic.statement.coverage.recorded === 5
+  && !('metCount' in ledger.metabolic.statement.coverage), ledger.metabolic.statement.coverage)
+const ledgerVisit = ledger.metabolic.visitSummary
+check('visit summary carries the monitored/lab/behaviour/coverage sections',
+  ['monitor', 'labs', 'behavior', 'coverage'].every((id) => ledgerVisit.sections.some((section) => section.id === id)),
+  ledgerVisit.sections.map((section) => section.id))
+check('visit summary text contains facts and the fixed disclaimer',
+  /血压/.test(ledgerVisit.text) && /最近化验/.test(ledgerVisit.text)
+  && /不含任何诊断、治疗或用药建议/.test(ledgerVisit.disclaimer))
+const ledgerReview = await service.goalReview('成员4', { code: 'metabolic' })
+check('goal review returns the metabolic statement/review/visit summary',
+  ledgerReview.ok === true && ledgerReview.kind === 'review'
+  && ledgerReview.statement?.rows?.length > 0 && ledgerReview.review?.recordDays >= 1
+  && typeof ledgerReview.visitSummary?.text === 'string', ledgerReview.kind)
+const visitTool = await service.goalVisitSummary('成员4', { code: 'metabolic' })
+check('visit summary tool returns copyable text',
+  visitTool.ok === true && /就诊摘要/.test(visitTool.text) && Array.isArray(visitTool.questions), visitTool)
+check('metabolic goal payload has no advice/suggestion/diagnosis keys',
+  bannedOutputKeys(ledger).length === 0, bannedOutputKeys(ledger))
+const metabolicUnsafe = unsafeClaims(ledger)
+check('metabolic goal text avoids diagnosis/medication/plan/recipe claims',
+  metabolicUnsafe.length === 0, metabolicUnsafe)
+const visitUnsafe = unsafeClaims(visitTool)
+check('visit summary text avoids diagnosis/medication/plan/recipe claims',
+  visitUnsafe.length === 0, visitUnsafe)
 
 // A member with protein but no weight cannot resolve the per-kg target.
 await service.record({ member: '成员0', measuredAt: stamp(0), values: { protein: 80 } })
@@ -558,8 +651,10 @@ const noSeason = await service.startGoalSeason('我')
 check('starting a season without a goal is rejected',
   noSeason.ok === false && /还没有/.test(noSeason.error ?? ''), noSeason)
 const metabolicSeason = await service.startGoalSeason('成员A', 'metabolic')
-check('metabolic goal cannot start a season',
-  metabolicSeason.ok === false && /不是赛季制/.test(metabolicSeason.error ?? ''), metabolicSeason)
+check('metabolic goal starts a new review cycle',
+  metabolicSeason.ok === true && metabolicSeason.goal.season.kind === 'review'
+  && metabolicSeason.goal.season.no === 2
+  && /复查周期/.test(metabolicSeason.summary ?? ''), metabolicSeason)
 const activateLean = await service.setGoal('我', { code: 'lean_muscle' })
 check('activate lean-muscle goal', activateLean.ok && activateLean.created === true, activateLean)
 let iLean = (await service.goalOverview('我')).goals.find((g) => g.code === 'lean_muscle')
@@ -861,15 +956,22 @@ check('ended season marks every checkpoint reached',
   endedGoal.season.checkpoints)
 check('ended season never reports negative time left', endedGoal.season.daysLeft >= 0)
 
-// The metabolic goal keeps its old seven-row target dashboard.
+// The metabolic goal keeps its ledger: behaviour accounts plus a statement,
+// never a scored seven-row indicator dashboard.
 const dadMetabolic = (await service.goalOverview('成员A')).goals.find((g) => g.code === 'metabolic')
-check('metabolic goal keeps seven target rows',
-  dadMetabolic.targets.length === 7 && dadMetabolic.coverage.evaluable === 7, dadMetabolic.coverage)
-check('metabolic goal has no season or accounts',
-  dadMetabolic.season === null && dadMetabolic.accounts.length === 0
-  && dadMetabolic.weekly === null && dadMetabolic.seasonReview === null)
+check('metabolic goal keeps the full target catalog',
+  dadMetabolic.targets.length >= 12 && dadMetabolic.coverage.evaluable === 4, dadMetabolic.coverage)
+check('metabolic goal has a review cycle and four accounts',
+  dadMetabolic.season?.kind === 'review' && dadMetabolic.accounts.length === 4
+  && dadMetabolic.weekly?.max === 28 && dadMetabolic.seasonReview === null)
+check('metabolic statement never counts "how many components met"',
+  dadMetabolic.metabolic?.statement?.coverage?.total === 5
+  && !('metCount' in (dadMetabolic.metabolic.statement.coverage ?? {}))
+  && /不计算「符合几项」/.test(dadMetabolic.metabolic.statement.note ?? ''))
 check('metabolic waist target uses the male cut-point',
   dadMetabolic.targets.find((row) => row.metric === 'waist')?.high === 90)
+check('metabolic HDL target uses the CDS 1.04 floor, not a sex split',
+  dadMetabolic.targets.find((row) => row.metric === 'hdl')?.low === 1.04)
 
 // A corrupt goals.json must degrade to a goal error, never take the panel down.
 const corruptDir = await mkdtemp(join(tmpdir(), 'dsh-health-corrupt-'))
@@ -983,61 +1085,166 @@ const leftSquad = await community.leave({ code: createdSquad.data.code, token: j
 check('squad leave removes the member', leftSquad.ok && leftSquad.data.remaining === 1, leftSquad)
 await rm(communityDir, { recursive: true, force: true })
 
-console.log('\n[version skew: data written by another build]')
-// A document can outlive the build that wrote it: a newer build may have
-// recorded a metric or a photo kind this build does not ship, or this build may
-// have dropped one. Reading must never fail the whole panel, and must never
-// silently label a foreign photo as a body shot.
-const legacyDir = await mkdtemp(join(tmpdir(), 'dsh-health-legacy-'))
-await writeFile(join(legacyDir, 'members.json'), JSON.stringify({
-  version: 1,
-  members: [{
-    id: 'legacy-member', name: '旧数据', relation: 'self', sex: 'male',
-    riskLevel: 'low', targets: {}, note: '', createdAt: 1, updatedAt: 1,
-  }],
-}))
-await writeFile(join(legacyDir, 'records.json'), JSON.stringify({
-  version: 1,
-  records: [{
-    id: 'legacy-record', memberId: 'legacy-member', memberName: '旧数据',
-    measuredAt: '2026-11-15 09:16', context: 'random',
-    values: { kcal: 580, protein: 20 }, source: 'image', note: '', createdAt: 2,
-  }],
-}))
-await writeFile(join(legacyDir, 'photos.json'), JSON.stringify({
-  version: 1,
-  photos: [{
-    id: 'legacy-photo', memberId: 'legacy-member', memberName: '旧数据',
-    kind: 'meal', takenAt: '2026-11-15 09:16', note: '',
-    filePath: join(legacyDir, 'photos', 'legacy-member', 'meal.jpg'),
-    fileName: 'meal.jpg', size: 1, mime: 'image/jpeg', createdAt: 3,
-  }],
-}))
-const legacy = new HealthService(legacyDir)
-let legacyInitError = null
-try {
-  await legacy.init()
-} catch (error) {
-  legacyInitError = error
-}
-check('an unknown photo kind does not block startup', legacyInitError === null,
-  legacyInitError && legacyInitError.message)
+// ---------------------------------------------------------------------------
+// Member height / optional risk stratification, server-derived BMI, the kcal
+// metric and the diet (meal) log. Runs on an isolated data directory so the
+// goal fixtures above keep their exact counts.
+// ---------------------------------------------------------------------------
 
-const legacyOverview = await legacy.overview('legacy-member')
-check('an unknown metric code does not fail the overview', legacyOverview.ok === true,
-  legacyOverview.ok ? undefined : legacyOverview.error)
-const legacyRow = (legacyOverview.ok ? legacyOverview.recent : [])
-  .flatMap((record) => record.values)
-  .find((entry) => entry.code === 'kcal')
-check('the unknown metric is still shown, by code',
-  legacyRow !== undefined
-  && legacyRow.name === 'kcal'
-  && legacyRow.unit === ''
-  && legacyRow.display === '580', legacyRow)
-const legacyPhotos = await legacy.listPhotos('legacy-member')
-check('unknown photo kinds stay out of the photo wall',
-  legacyPhotos.ok === true && legacyPhotos.total === 0, legacyPhotos)
-await rm(legacyDir, { recursive: true, force: true })
+console.log('\n[members: risk level and height]')
+const profileDir = await mkdtemp(join(tmpdir(), 'dsh-health-profile-'))
+const profile = new HealthService(profileDir)
+await profile.init()
+const profileSeed = (await profile.listMembers())[0]
+check('seeded member defaults to unknown risk', profileSeed.riskLevel === 'unknown', profileSeed)
+check('unknown risk is the first catalog entry', RISK_LEVELS[0]?.code === 'unknown', RISK_LEVELS)
+
+const withHeight = await profile.createMember({ name: '身高成员', sex: 'male', height: 175.5 })
+check('create member stores height', withHeight.ok && withHeight.member.height === 175.5, withHeight)
+const heightTooLow = await profile.createMember({ name: '身高过矮', sex: 'male', height: 79 })
+check('height below 80 rejected', !heightTooLow.ok && /身高/.test(heightTooLow.error ?? ''), heightTooLow)
+const heightTooHigh = await profile.createMember({ name: '身高过高', sex: 'male', height: 251 })
+check('height above 250 rejected', !heightTooHigh.ok && /身高/.test(heightTooHigh.error ?? ''), heightTooHigh)
+const heightRounded = await profile.createMember({ name: '身高小数', sex: 'female', height: 165.55 })
+const roundedHeightDecimals = String(heightRounded.member?.height ?? '').split('.')[1]?.length ?? 0
+check('height keeps at most one decimal', heightRounded.ok && roundedHeightDecimals <= 1, heightRounded)
+
+const updatedHeight = await profile.updateMember('身高成员', { height: 178.04 })
+check('update member height', updatedHeight.ok && updatedHeight.member.height === 178, updatedHeight)
+const clearedHeight = await profile.updateMember('身高成员', { height: null })
+check('null clears height', clearedHeight.ok && clearedHeight.member.height === null, clearedHeight)
+check('update member rejects an impossible height',
+  !(await profile.updateMember('身高成员', { height: 10 })).ok)
+
+const unknownRisk = await profile.createMember({ name: '未评估成员', sex: 'female' })
+check('new member defaults to unknown risk',
+  unknownRisk.ok && unknownRisk.member.riskLevel === 'unknown', unknownRisk)
+const explicitRisk = await profile.createMember({ name: '高危成员', sex: 'male', riskLevel: 'high' })
+check('explicit risk level is kept',
+  explicitRisk.ok && explicitRisk.member.riskLevel === 'high', explicitRisk)
+
+await profile.updateMember('我', { height: 175 })
+const profileOverview = await profile.overview('我')
+check('overview member carries height and unknown risk',
+  profileOverview.member.height === 175 && profileOverview.member.riskCode === 'unknown', profileOverview.member)
+check('overview member list carries height',
+  profileOverview.members.every((member) => 'height' in member), profileOverview.members)
+
+console.log('\n[records: BMI derivation]')
+const bmiRecord = await profile.record({ member: '我', measuredAt: stamp(0, 7), values: { weight: 70 } })
+check('weight derives BMI from the member height',
+  bmiRecord.ok && bmiRecord.record.values.bmi === 22.9, bmiRecord.record)
+check('derived BMI is marked as server-derived',
+  JSON.stringify(bmiRecord.record.derived) === JSON.stringify(['bmi']), bmiRecord.record.derived)
+const explicitBmi = await profile.record({ member: '我', measuredAt: stamp(0, 8), values: { weight: 70, bmi: 23.1 } })
+check('explicit BMI wins over derivation',
+  explicitBmi.ok && explicitBmi.record.values.bmi === 23.1 && !explicitBmi.record.derived, explicitBmi.record)
+const noHeightBmi = await profile.record({ member: '未评估成员', measuredAt: stamp(0, 9), values: { weight: 60 } })
+check('weight without height derives no BMI and does not fail',
+  noHeightBmi.ok && noHeightBmi.record.values.bmi === undefined, noHeightBmi.record)
+
+console.log('\n[metrics: kcal]')
+const kcalMetric = METRICS.find((metric) => metric.code === 'kcal')
+check('kcal metric is a trend-only diet metric',
+  kcalMetric?.unit === 'kcal' && kcalMetric?.category === 'diet'
+  && kcalMetric?.targetMode === 'trend' && kcalMetric?.min === 0 && kcalMetric?.max === 10000,
+  kcalMetric)
+check('kcal metric has no default target band',
+  typeof kcalMetric?.general?.low !== 'number' && typeof kcalMetric?.general?.high !== 'number',
+  kcalMetric?.general)
+const kcalRecord = await profile.record({ member: '我', measuredAt: stamp(0, 12), values: { kcal: 520 } })
+check('kcal is recordable', kcalRecord.ok && kcalRecord.record.values.kcal === 520, kcalRecord)
+const kcalStats = await profile.stats({ member: '我', metric: 'kcal' })
+check('kcal stats stays descriptive with no band rate',
+  kcalStats.ok && kcalStats.sampleCount === 1 && kcalStats.withinBandCount === null, kcalStats)
+
+console.log('\n[diet: meals]')
+const dietMember = await profile.createMember({ name: '饮食成员', sex: 'female' })
+check('diet member created', dietMember.ok, dietMember)
+const savedMeal = await profile.saveMeal('饮食成员', {
+  dataBase64: PNG_1X1,
+  measuredAt: stamp(0, 12, 10),
+  mealType: 'lunch',
+  kcal: 620,
+  protein: 35,
+  note: '食堂',
+  items: [
+    { name: '米饭', portion: '一碗', kcal: 230 },
+    { name: '青菜', portion: '一份', kcal: 80 },
+  ],
+})
+check('saveMeal stores the record and a meal photo',
+  savedMeal.ok && savedMeal.record.values.kcal === 620 && savedMeal.photo?.kind === 'meal', savedMeal)
+check('meal record keeps mealType/photoId/items',
+  savedMeal.record.mealType === 'lunch'
+  && savedMeal.record.photoId === savedMeal.photo.id
+  && savedMeal.record.items.length === 2, savedMeal.record)
+check('MEAL_TYPES catalog covers the four slots',
+  MEAL_TYPES.map((item) => item.code).join(',') === 'breakfast,lunch,dinner,snack', MEAL_TYPES)
+
+const mealList = await profile.listMeals('饮食成员')
+check('listMeals returns the meal with photo metadata',
+  mealList.ok && mealList.total === 1 && mealList.meals[0].mealTypeName === '午餐'
+  && mealList.meals[0].photo?.id === savedMeal.photo.id, mealList)
+const badMealType = await profile.record({ member: '我', values: { kcal: 100 }, mealType: 'brunch' })
+check('invalid mealType rejected', !badMealType.ok && /餐次/.test(badMealType.error ?? ''), badMealType)
+const foreignPhoto = await profile.record({ member: '我', values: { kcal: 100 }, photoId: savedMeal.photo.id })
+check('photo from another member rejected',
+  !foreignPhoto.ok && /不属于/.test(foreignPhoto.error ?? ''), foreignPhoto)
+
+const overviewDiet = await profile.overview('饮食成员')
+check('overview.diet sums today kcal/protein/count',
+  overviewDiet.ok && overviewDiet.diet.count === 1 && overviewDiet.diet.kcal === 620
+  && overviewDiet.diet.protein === 35, overviewDiet.diet)
+check('overview.diet returns a zero-filled rolling week',
+  overviewDiet.diet.days.length === 7
+  && overviewDiet.diet.days[6].date === overviewDiet.diet.today
+  && overviewDiet.diet.days[0].kcal === 0 && overviewDiet.diet.days[0].count === 0,
+  overviewDiet.diet.days)
+check('overview.diet recent joins the meal photo',
+  overviewDiet.diet.recent.length === 1 && overviewDiet.diet.recent[0].photo?.kind === 'meal',
+  overviewDiet.diet.recent)
+check('meal photos stay out of the physique wall', overviewDiet.photos.length === 0, overviewDiet.photos)
+
+await profile.record({ member: '饮食成员', measuredAt: stamp(0, 13), values: { water: 800 } })
+const dietWithWater = await profile.overview('饮食成员')
+check('overview.diet no longer carries water (大水 account owns it)',
+  dietWithWater.diet.water === undefined
+  && dietWithWater.diet.days.every((day) => day.water === undefined)
+  && dietWithWater.diet.kcal === 620, dietWithWater.diet)
+
+const mealPhotoId = savedMeal.photo.id
+const deletedMeal = await profile.deleteMeal('饮食成员', savedMeal.record.id)
+check('deleteMeal removes the record and its photo',
+  deletedMeal.ok && deletedMeal.removedPhoto === mealPhotoId
+  && (await profile.photoFile(mealPhotoId)) === null, deletedMeal)
+const afterMealDelete = await profile.overview('饮食成员')
+check('overview.diet drops the deleted meal',
+  afterMealDelete.diet.count === 0 && afterMealDelete.diet.kcal === 0, afterMealDelete.diet)
+
+const photosBeforeRollback = (await profile.photos.read()).photos.length
+const originalRecord = profile.record.bind(profile)
+profile.record = async () => ({ ok: false, error: 'forced failure' })
+const rollbackMeal = await profile.saveMeal('饮食成员', {
+  dataBase64: PNG_1X1, mealType: 'dinner', kcal: 300,
+})
+profile.record = originalRecord
+const photosAfterRollback = (await profile.photos.read()).photos.length
+check('failed saveMeal rolls back the uploaded photo',
+  !rollbackMeal.ok && photosAfterRollback === photosBeforeRollback,
+  { rollbackMeal, photosBeforeRollback, photosAfterRollback })
+
+const cascadeMeal = await profile.saveMeal('饮食成员', {
+  dataBase64: PNG_1X1, mealType: 'snack', kcal: 150,
+})
+check('meal saved before member cascade', cascadeMeal.ok && cascadeMeal.photo?.kind === 'meal', cascadeMeal)
+const cascadePhotoId = cascadeMeal.photo.id
+const cascadeDelete = await profile.deleteMember('饮食成员', true)
+check('member delete cascades meal records and photos',
+  cascadeDelete.ok && cascadeDelete.removedRecords >= 1 && cascadeDelete.removedPhotos >= 1,
+  cascadeDelete)
+check('cascaded meal photo metadata is gone', (await profile.photoFile(cascadePhotoId)) === null)
+await rm(profileDir, { recursive: true, force: true })
 
 await rm(dir, { recursive: true, force: true })
 const totalChecks = passes + failures

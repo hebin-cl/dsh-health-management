@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Health management",
-    "description": "Records blood pressure, glucose, lipids, heart rate, weight, uric acid, waist, body fat, water, sleep and training for up to 8 family members, organised around management goals (metabolic syndrome management, lean-muscle management). Lean-muscle is presented as a lean account: four behaviour accounts (training/protein/sleep/water), a 12-week season, a weekly ledger and an observation-only body-composition statement. Recording and descriptive statistics only, never diagnosis, training, nutrition or medication advice."
+    "description": "Records blood pressure, glucose, lipids, heart rate, weight, uric acid, waist, body fat, water, sleep and training for up to 8 family members, organised around management goals (metabolic syndrome management, lean-muscle management). Adds Little Muscle King, a draggable floating health buddy whose name and avatar are configurable in the Little Muscle King settings page (built-in artwork or an uploaded image); it offers configurable logging reminders and general lifestyle tips, plus show/hide, size, quiet hours and notifications. Lean-muscle is presented as a lean account: four behaviour accounts (training/meal/sleep/water), a 12-week season, a weekly ledger and an observation-only body-composition statement. Recording and descriptive statistics only, never diagnosis, training, nutrition or medication advice."
   },
   "panel": {
     "title": "Health management"

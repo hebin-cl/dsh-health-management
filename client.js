@@ -7,6 +7,7 @@ window.__ModuleLoader__.load({
 
     const API = '/api/dsh-health'
     const HERO_ART = `${API}/hero-art?v=4`
+    const AVATAR_ART = `${API}/avatar-art?v=1`
 
     // ---------------------------------------------------------------- palette
     // Chart line colors (artwork colors, readable in both light and dark).
@@ -30,6 +31,7 @@ window.__ModuleLoader__.load({
       { code: 'morning', name: '晨起' },
       { code: 'evening', name: '睡前' },
       { code: 'random', name: '随机' },
+      { code: 'lab', name: '检验' },
     ]
 
     const TABS = [
@@ -38,6 +40,40 @@ window.__ModuleLoader__.load({
       { code: 'archive', name: '档案' },
       { code: 'discover', name: '发现' },
     ]
+
+    /**
+     * Tab labels depend on the active management goal: the cycle tab is
+     * 「赛季」for a lean-muscle member and 「复查」for a metabolic member.
+     * With both goals the lean label wins (the metabolic cycle is still
+     * reachable from the metabolic hero and from the same tab's content).
+     */
+    function tabsFor(goals) {
+      const list = goals ?? []
+      const leanActive = list.some((goal) => goal?.code === 'lean_muscle' && goal?.status === 'active')
+      const metabolicActive = list.some((goal) => goal?.code === 'metabolic' && goal?.status === 'active')
+      const seasonName = leanActive ? '赛季' : metabolicActive ? '复查' : '赛季'
+      return TABS.map((item) => (item.code === 'season' ? { ...item, name: seasonName } : item))
+    }
+
+    const MEAL_TYPES = [
+      { code: 'breakfast', name: '早餐' },
+      { code: 'lunch', name: '午餐' },
+      { code: 'dinner', name: '晚餐' },
+      { code: 'snack', name: '加餐' },
+    ]
+
+    /** Default meal type from the clock: only a convenience, the user can change it. */
+    function inferMealType(date = new Date()) {
+      const hour = date.getHours()
+      if (hour >= 5 && hour < 10) return 'breakfast'
+      if (hour >= 10 && hour < 15) return 'lunch'
+      if (hour >= 16 && hour < 21) return 'dinner'
+      return 'snack'
+    }
+
+    function mealTypeName(code) {
+      return MEAL_TYPES.find((item) => item.code === code)?.name ?? '用餐'
+    }
 
     const RECORDS_SHOWN = 8
     const TOAST_MS = 2600
@@ -60,6 +96,261 @@ window.__ModuleLoader__.load({
       { code: 'hard', name: '硬核' },
       { code: 'off', name: '关闭' },
     ]
+
+    // ---------------------------------------------------------------- float
+    // A draggable health avatar in the frame-wide overlay plus a dedicated
+    // Settings section. The avatar only reads aggregate counts and shows
+    // general lifestyle reminders; it never derives a reminder from an
+    // abnormal measurement, a diagnosis, or a medication rule.
+
+    const FLOAT_CACHE_KEY = 'dsh-health.float.v1'
+    const FLOAT_SIZE_PX = { small: 52, medium: 64, large: 80 }
+    const FLOAT_SIZE_CODES = ['small', 'medium', 'large']
+    const FLOAT_AVATAR_STYLES = ['portrait', 'bean', 'muscle', 'sun']
+    const FLOAT_AVATAR_MAX_BYTES = 512 * 1024
+    const FLOAT_AVATAR_MAX_LENGTH = 800 * 1024
+    const FLOAT_INTERVALS = [15, 30, 45, 60, 90, 120]
+    const FLOAT_BUBBLE_SECONDS = [0, 6, 12, 20, 30]
+    const FLOAT_DEFAULT_SETTINGS = {
+      name: '小肌霸',
+      avatarStyle: 'portrait',
+      avatarImage: null,
+      enabled: true,
+      remindersEnabled: true,
+      intervalMinutes: 45,
+      quietHoursEnabled: true,
+      quietStart: '22:00',
+      quietEnd: '08:00',
+      bubbleSeconds: 12,
+      desktopNotifications: false,
+      size: 'medium',
+      position: { x: 0.972, y: 0.42 },
+    }
+
+    // Built-in artwork palettes. Fixed colors belong to the mascot; surrounding
+    // surfaces use the host theme tokens.
+    const FLOAT_AVATAR_PALETTES = {
+      bean: {
+        body: ['#7DE8D8', '#2DD4BF', '#0EA5A6'],
+        leaf: ['#16A34A', '#86EFAC'],
+        arm: '#0F766E',
+        headband: false,
+        rays: false,
+        armWidth: '3.6',
+      },
+      muscle: {
+        body: ['#FFD166', '#FF9F1C', '#EA580C'],
+        leaf: ['#65A30D', '#BEF264'],
+        arm: '#9A3412',
+        headband: true,
+        rays: false,
+        armWidth: '5',
+      },
+      sun: {
+        body: ['#FFE066', '#FACC15', '#F59E0B'],
+        leaf: null,
+        arm: '#B45309',
+        headband: false,
+        rays: true,
+        armWidth: '3.6',
+      },
+    }
+
+    // Each rendered mascot needs its own SVG gradient ids; the main avatar and
+    // the small card avatar coexist in the document.
+    let floatAvatarSeq = 0
+
+    const FLOAT_I18N = {
+      zh: {
+        'settings.title': '小肌霸设置',
+        'settings.subtitle': '把{name}放在页面角落：拖动换位置，点击看今日记录，提醒你记一笔或歇一会儿。',
+        'settings.identity': '名称与形象',
+        'settings.name': '名称',
+        'settings.nameHint': '显示在卡片、问候与通知里；留空恢复默认「小肌霸」。',
+        'settings.nameSave': '保存',
+        'settings.avatar': '形象',
+        'settings.avatarHint': '选择内置形象，或上传一张图片（仅保存在本机）；自定义图片优先。',
+        'settings.avatarStyle': '内置形象',
+        'settings.avatarStyle.portrait': '小肌霸',
+        'settings.avatarStyle.bean': '健康豆',
+        'settings.avatarStyle.muscle': '力量型',
+        'settings.avatarStyle.sun': '阳光型',
+        'settings.avatarUpload': '上传图片',
+        'settings.avatarRemove': '移除自定义图片',
+        'settings.avatarCustom': '自定义图片',
+        'settings.avatarTooLarge': '图片不能超过 512 KB。',
+        'settings.avatarBadType': '请选择 PNG、JPEG、WebP 或 GIF 图片。',
+        'settings.avatarReadError': '图片读取失败，请换一张试试。',
+        'settings.appearance': '显示与位置',
+        'settings.show': '显示{name}',
+        'settings.showHint': '关闭后{name}立即隐藏，健康面板与已有记录不受影响。',
+        'settings.size': '大小',
+        'settings.sizeHint': '{name}在页面上的大小；位置由拖动决定。',
+        'settings.size.small': '小',
+        'settings.size.medium': '中',
+        'settings.size.large': '大',
+        'settings.position': '位置',
+        'settings.positionHint': '拖动{name}即可换位置；位置会保存，刷新后仍在原处。',
+        'settings.resetPosition': '回到默认位置',
+        'settings.positionReset': '已回到默认位置',
+        'settings.reminders': '健康提醒',
+        'settings.remindersEnabled': '开启提醒',
+        'settings.remindersHint': '提醒只在页面内以气泡出现；内容为记录提醒与一般生活方式提示。',
+        'settings.interval': '提醒间隔',
+        'settings.intervalHint': '两次提醒之间的间隔；免打扰时段内会自动跳过。',
+        'settings.minutes': '{n} 分钟',
+        'settings.bubble': '气泡停留',
+        'settings.bubbleHint': '到时间自动收起，也可以手动关闭。',
+        'settings.bubble.never': '不自动关闭',
+        'settings.seconds': '{n} 秒',
+        'settings.notify': '系统通知',
+        'settings.notifyHint': '在气泡之外使用浏览器/桌面通知提醒；需要授权。',
+        'settings.notifyDenied': '通知权限未开启，仍会使用页面内气泡。',
+        'settings.notifyUnsupported': '当前环境不支持系统通知。',
+        'settings.quiet': '免打扰时段',
+        'settings.quietWindow': '时间范围',
+        'settings.quietEnabled': '开启免打扰',
+        'settings.quietHint': '这个时段内不弹提醒，{name}会打瞌睡。',
+        'settings.quietStart': '开始',
+        'settings.quietEnd': '结束',
+        'settings.disclaimer': '{name}只做记录提醒与一般生活方式提示，不构成医疗诊断、治疗建议或用药指导。提醒内容不代表你的健康结论；如有不适请咨询医生。',
+        'notification.title': '{name} · 健康提醒',
+        'settings.save.saving': '保存中…',
+        'settings.save.saved': '已保存',
+        'settings.save.error': '保存失败',
+        'settings.readError': '读取小肌霸设置失败',
+        'settings.retry': '重试',
+        'settings.loading': '正在读取设置…',
+        'card.title': '{name}',
+        'card.tip': '我只提醒记录和一般生活方式，不提供诊断或用药建议。',
+        'card.open': '打开健康面板',
+        'card.snooze': '1 小时后再提醒',
+        'card.configHint': '在「设置 → 小肌霸设置」里调整显示与提醒。',
+        'card.close': '关闭',
+        'bubble.close': '关闭提醒',
+        'avatar.label': '{name}：拖动可移动，单击打开快捷卡片，双击打开健康面板',
+        'status.noMembers': '还没有家庭成员，先去健康面板添加吧。',
+        'status.today': '{name} · 今天已记录 {count} 条',
+        'status.familyToday': '全家 · 今天已记录 {count} 条',
+        'status.unknown': '正在读取今天的记录…',
+        'status.goals': '{count} 个管理目标进行中',
+        'tip.greeting': '我是{name}，会在这里陪你记健康、提醒你歇一歇。',
+        'tip.noMembers': '添加家庭成员后，我会帮你记住每一次健康记录。',
+        'tip.record': '今天还没有健康记录，要不要记一笔？',
+        'tip.water': '喝口水吧，顺便伸个懒腰。',
+        'tip.stretch': '坐了一会儿了，起来走两步。',
+        'tip.eyes': '看看远处，让眼睛休息一下。',
+        'tip.breath': '慢慢深呼吸几次，放松一下。',
+        'tip.recorded': '今天的记录已经存好了。',
+        'tip.training': '薄肌账户今天还没有「大练」的存入记录，练过的话记一笔？',
+        'tip.protein': '今天还没有记录蛋白质摄入，有数据的话补一笔？',
+        'tip.sleep': '睡眠时长还没有记，方便时补一笔？',
+        'tip.snoozed': '好，我 1 小时后再来。',
+        'tip.quiet': '现在是免打扰时段，{name}先打个盹。',
+      },
+      en: {
+        'settings.title': 'Little Muscle King settings',
+        'settings.subtitle': 'Keep {name} in a corner of the page: drag to move, click for today\'s records, and get a gentle nudge to log or take a break.',
+        'settings.identity': 'Name and avatar',
+        'settings.name': 'Name',
+        'settings.nameHint': 'Shown in the card, greeting and notifications; leave empty for the default "Little Muscle King".',
+        'settings.nameSave': 'Save',
+        'settings.avatar': 'Avatar',
+        'settings.avatarHint': 'Choose a built-in avatar or upload an image (stored locally); the custom image wins.',
+        'settings.avatarStyle': 'Built-in avatar',
+        'settings.avatarStyle.portrait': 'Little Muscle King',
+        'settings.avatarStyle.bean': 'Health bean',
+        'settings.avatarStyle.muscle': 'Power',
+        'settings.avatarStyle.sun': 'Sunny',
+        'settings.avatarUpload': 'Upload image',
+        'settings.avatarRemove': 'Remove custom image',
+        'settings.avatarCustom': 'Custom image',
+        'settings.avatarTooLarge': 'The image must be 512 KB or smaller.',
+        'settings.avatarBadType': 'Choose a PNG, JPEG, WebP or GIF image.',
+        'settings.avatarReadError': 'Could not read the image; try another one.',
+        'settings.appearance': 'Visibility and position',
+        'settings.show': 'Show {name}',
+        'settings.showHint': '{name} hides immediately; the health panel and existing records are unchanged.',
+        'settings.size': 'Size',
+        'settings.sizeHint': 'How large {name} appears; drag it to change position.',
+        'settings.size.small': 'Small',
+        'settings.size.medium': 'Medium',
+        'settings.size.large': 'Large',
+        'settings.position': 'Position',
+        'settings.positionHint': 'Drag {name} to move it. The position is saved and restored after a reload.',
+        'settings.resetPosition': 'Reset position',
+        'settings.positionReset': 'Position reset',
+        'settings.reminders': 'Health reminders',
+        'settings.remindersEnabled': 'Enable reminders',
+        'settings.remindersHint': 'Reminders appear as in-page bubbles with logging prompts and general lifestyle tips.',
+        'settings.interval': 'Reminder interval',
+        'settings.intervalHint': 'Time between reminders; quiet hours are skipped.',
+        'settings.minutes': '{n} min',
+        'settings.bubble': 'Bubble duration',
+        'settings.bubbleHint': 'The bubble closes itself after this time; you can also close it manually.',
+        'settings.bubble.never': 'Keep open',
+        'settings.seconds': '{n} s',
+        'settings.notify': 'System notifications',
+        'settings.notifyHint': 'Also use browser/desktop notifications outside the bubble; permission is required.',
+        'settings.notifyDenied': 'Notification permission was not granted; in-page bubbles are still used.',
+        'settings.notifyUnsupported': 'System notifications are not available in this environment.',
+        'settings.quiet': 'Quiet hours',
+        'settings.quietWindow': 'Quiet window',
+        'settings.quietEnabled': 'Enable quiet hours',
+        'settings.quietHint': 'No reminders during this window; {name} dozes off.',
+        'settings.quietStart': 'Start',
+        'settings.quietEnd': 'End',
+        'settings.disclaimer': '{name} only offers logging prompts and general lifestyle tips. It is not medical diagnosis, treatment, or medication guidance, and its reminders are not a conclusion about your health. Consult a doctor if you feel unwell.',
+        'notification.title': '{name} · Health reminder',
+        'settings.save.saving': 'Saving…',
+        'settings.save.saved': 'Saved',
+        'settings.save.error': 'Save failed',
+        'settings.readError': 'Could not read the Little Muscle King settings',
+        'settings.retry': 'Retry',
+        'settings.loading': 'Loading settings…',
+        'card.title': '{name}',
+        'card.tip': 'I only offer logging prompts and general lifestyle tips, never diagnosis or medication advice.',
+        'card.open': 'Open health panel',
+        'card.snooze': 'Snooze for 1 hour',
+        'card.configHint': 'Adjust visibility and reminders in Settings → Little Muscle King settings.',
+        'card.close': 'Close',
+        'bubble.close': 'Dismiss reminder',
+        'avatar.label': '{name}: drag to move, click for the quick card, double-click for the health panel',
+        'status.noMembers': 'No family members yet. Add one in the health panel first.',
+        'status.today': '{name} · {count} records today',
+        'status.familyToday': 'Family · {count} records today',
+        'status.unknown': 'Reading today\'s records…',
+        'status.goals': '{count} active management goals',
+        'tip.greeting': 'I am {name}. I will keep you company while you log health data and take breaks.',
+        'tip.noMembers': 'Add a family member and I will help you remember every health record.',
+        'tip.record': 'No health records today yet. Want to log one?',
+        'tip.water': 'Have some water, and stretch while you are at it.',
+        'tip.stretch': 'You have been sitting for a while. Stand up and walk a little.',
+        'tip.eyes': 'Look into the distance and give your eyes a rest.',
+        'tip.breath': 'Take a few slow breaths and relax.',
+        'tip.recorded': 'Today\'s records are saved.',
+        'tip.training': 'No training deposit in the lean account today. If you trained, log it.',
+        'tip.protein': 'No protein intake logged today. Add a number if you have one.',
+        'tip.sleep': 'Sleep duration is not logged yet. Add it when convenient.',
+        'tip.snoozed': 'Okay, I will come back in an hour.',
+        'tip.quiet': 'Quiet hours are on. {name} is taking a nap.',
+      },
+    }
+
+    // Bound in apply() once the locale service is available; until then the
+    // Chinese dictionary is the deterministic fallback.
+    let floatTranslate = (key) => FLOAT_I18N.zh[key] ?? String(key)
+    let floatLocaleSubscribe = () => () => {}
+    let openHealthPanel = () => {}
+
+    /** Fill {name}/{count} placeholders without a template engine. */
+    function floatText(key, values) {
+      let text = floatTranslate(key)
+      for (const [name, value] of Object.entries(values ?? {})) {
+        text = text.split(`{${name}}`).join(String(value))
+      }
+      return text
+    }
 
     // ---------------------------------------------------------------- styles
     const CSS = `
@@ -1020,6 +1311,69 @@ window.__ModuleLoader__.load({
     .dshh-archive-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
   }
 
+/* ---------- diet ---------- */
+/* Calorie figures are records, never a pass/fail signal: no warn colours here. */
+.dshh-dietpane { display:flex; flex-direction:column; gap:14px; }
+.dshh-dietstats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.dshh-dietstat { display:flex; flex-direction:column; gap:2px; padding:11px 13px;
+  border:1px solid var(--dsw-alias-border-l1); border-radius:12px;
+  background:var(--dsw-alias-bg-layer-2); }
+.dshh-dietstat b { font-size:20px; font-weight:680; line-height:1.2;
+  font-variant-numeric:tabular-nums; }
+.dshh-dietstat span { font-size:10.5px; color:var(--dsw-alias-label-secondary); }
+.dshh-dietnote { margin-top:10px; font-size:11px; line-height:1.6;
+  color:var(--dsw-alias-label-secondary); }
+.dshh-dietdays { display:flex; flex-direction:column; gap:7px; }
+.dshh-dietday { display:grid; grid-template-columns:78px minmax(0,1fr) 124px;
+  align-items:center; gap:10px; font-size:11.5px; }
+.dshh-dietday-date { color:var(--dsw-alias-label-secondary); white-space:nowrap;
+  font-variant-numeric:tabular-nums; }
+.dshh-dietday-bar { height:8px; border-radius:999px; overflow:hidden;
+  background:var(--dsw-alias-bg-layer-2); }
+.dshh-dietday-fill { height:100%; border-radius:999px;
+  background:var(--dsw-alias-brand-primary); opacity:.7; }
+.dshh-dietday-right { text-align:right; font-variant-numeric:tabular-nums;
+  font-weight:600; white-space:nowrap; }
+.dshh-dietday-right small { font-weight:400; margin-left:5px;
+  color:var(--dsw-alias-label-secondary); font-size:10.5px; }
+.dshh-meals { display:flex; flex-direction:column; }
+.dshh-meal { display:grid; grid-template-columns:64px minmax(0,1fr) auto;
+  gap:11px; padding:10px 2px; align-items:start;
+  border-bottom:1px solid var(--dsw-alias-border-l1); }
+.dshh-meal:last-child { border-bottom:none; }
+.dshh-meal-thumb { width:64px; height:64px; border-radius:10px; object-fit:cover;
+  display:flex; align-items:center; justify-content:center; flex:none;
+  background:var(--dsw-alias-bg-layer-2); color:var(--dsw-alias-label-secondary);
+  border:1px solid var(--dsw-alias-border-l1); font-size:17px; }
+.dshh-meal-main { min-width:0; }
+.dshh-meal-head { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.dshh-meal-type { font-weight:620; font-size:12.5px; }
+.dshh-meal-time { font-size:11px; color:var(--dsw-alias-label-secondary);
+  font-variant-numeric:tabular-nums; }
+.dshh-meal-nums { font-size:12px; margin-top:1px; font-variant-numeric:tabular-nums; }
+.dshh-meal-note { font-size:11px; color:var(--dsw-alias-label-secondary); margin-top:2px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dshh-meal-items { margin:5px 0 0; padding-left:16px; font-size:11px; line-height:1.7;
+  color:var(--dsw-alias-label-secondary); word-break:break-word; }
+.dshh-meal-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+.dshh-meal-full { display:block; width:100%; max-height:220px; object-fit:cover;
+  border-radius:10px; margin-top:8px; }
+.dshh-mealestimate { margin:10px 0; padding:10px 12px; font-size:11.5px; line-height:1.65;
+  border:1px solid var(--dsw-alias-border-l1); border-radius:10px;
+  background:var(--dsw-alias-bg-layer-2); }
+.dshh-mealestimate-title { font-weight:620; font-size:12.5px; margin-bottom:4px; }
+.dshh-mealquick { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.dshh-mealquick-nums { display:flex; gap:18px; flex-wrap:wrap; font-variant-numeric:tabular-nums; }
+.dshh-mealquick-num { display:flex; flex-direction:column; gap:1px; }
+.dshh-mealquick-num b { font-size:17px; font-weight:680; line-height:1.2; }
+.dshh-mealquick-num span { font-size:10.5px; color:var(--dsw-alias-label-secondary); }
+@media (max-width:640px) {
+  .dshh-dietstats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dshh-dietday { grid-template-columns:64px minmax(0,1fr) 104px; gap:8px; }
+  .dshh-meal { grid-template-columns:48px minmax(0,1fr) auto; }
+  .dshh-meal-thumb { width:48px; height:48px; font-size:14px; }
+}
+
 @keyframes dshhRise {
   from { opacity:0; transform:translateY(8px); }
   to { opacity:1; transform:none; }
@@ -1029,6 +1383,221 @@ window.__ModuleLoader__.load({
   .dshh-photo-img { transition:none; }
   .dshh-photo:hover .dshh-photo-img { transform:none; }
   .dshh-seasonbar-fill { transition:none; }
+}
+`
+
+    // Styles for the floating avatar and its dedicated Settings page. Kept
+    // separate from the panel stylesheet so the overlay never depends on the
+    // panel being mounted.
+    const FLOAT_CSS = `
+.dshh-float-root { position:fixed; inset:0; z-index:60; pointer-events:none; }
+.dshh-float { position:absolute; pointer-events:auto; user-select:none; -webkit-user-select:none;
+  touch-action:none; cursor:grab; outline:none; border-radius:50%; }
+.dshh-float:focus-visible { box-shadow:0 0 0 3px var(--dsw-alias-brand-primary); }
+.dshh-float.is-dragging { cursor:grabbing; }
+.dshh-float-inner { position:relative; width:100%; height:100%; transform-origin:50% 70%;
+  animation:dshhFloatBob 4.2s ease-in-out infinite; }
+.dshh-float:hover .dshh-float-inner { animation-play-state:paused; }
+.dshh-float.is-dragging .dshh-float-inner { animation:none; transform:scale(1.06); }
+.dshh-float-art { display:block; width:100%; height:100%; }
+.dshh-float-custom { object-fit:cover; border-radius:50%; box-sizing:border-box; }
+.dshh-float .dshh-float-custom { border:1px solid rgba(255,255,255,.7);
+  box-shadow:0 6px 18px rgba(15,23,42,.22); }
+.dshh-float-dot { position:absolute; right:4%; bottom:6%; width:13%; height:13%;
+  min-width:9px; min-height:9px; border-radius:50%; border:2px solid var(--dsw-alias-bg-base);
+  box-shadow:0 0 0 1px var(--dsw-alias-border-l1); }
+.dshh-float-bang { position:absolute; right:-2px; top:-2px; width:20px; height:20px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:750;
+  color:#fff; background:var(--dsw-alias-state-warn-primary);
+  box-shadow:0 2px 6px rgba(15,23,42,.22); animation:dshhFloatPop .2s ease-out; }
+.dshh-float.is-sleeping .dshh-float-inner { filter:saturate(.65) brightness(.92); }
+.dshh-float-sleep { position:absolute; right:-1px; top:-2px; width:20px; height:20px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:750;
+  color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-overlay);
+  border:1px solid var(--dsw-alias-border-l1); box-shadow:0 1px 3px rgba(15,23,42,.18); }
+.dshh-float-card, .dshh-float-bubble { position:absolute; pointer-events:auto; z-index:61;
+  background:var(--dsw-alias-bg-overlay); color:var(--dsw-alias-label-primary);
+  border:1px solid var(--dsw-alias-border-l1); border-radius:16px;
+  box-shadow:0 18px 48px rgba(15,23,42,.22); animation:dshhFloatRise .18s ease-out; }
+.dshh-float-card { padding:14px; max-height:calc(100vh - 24px); overflow-y:auto; }
+.dshh-float-card .dshh-btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:1px solid var(--dsw-alias-border-l1); border-radius:8px; padding:6px 10px;
+  background:var(--dsw-alias-bg-layer-2); color:var(--dsw-alias-label-primary);
+  font:inherit; font-size:12px; cursor:pointer; }
+.dshh-float-card .dshh-btn:hover { background:var(--dsw-alias-bg-layer-1); }
+.dshh-float-card .dshh-btn-primary { background:var(--dsw-alias-brand-primary);
+  border-color:var(--dsw-alias-brand-primary); color:#fff; }
+.dshh-float-card .dshh-btn:focus-visible { outline:2px solid var(--dsw-alias-brand-primary); outline-offset:1px; }
+.dshh-float-card-head { display:flex; align-items:center; gap:8px; }
+.dshh-float-card-avatar { width:30px; height:30px; flex:none; }
+.dshh-float-card-title { font-size:13px; font-weight:650; flex:1; min-width:0; }
+.dshh-float-card-status { margin-top:8px; font-size:11.5px; color:var(--dsw-alias-label-secondary);
+  font-variant-numeric:tabular-nums; }
+.dshh-float-card-text { margin-top:6px; font-size:12px; line-height:1.65; }
+.dshh-float-card-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.dshh-float-card-actions .dshh-btn { flex:1; min-width:110px; }
+.dshh-float-card-hint { margin-top:10px; padding-top:9px; border-top:1px solid var(--dsw-alias-border-l1);
+  font-size:10.5px; color:var(--dsw-alias-label-secondary); line-height:1.55; }
+.dshh-float-bubble { padding:11px 12px; display:flex; gap:8px; align-items:flex-start;
+  overflow-y:auto; }
+.dshh-float-bubble-text { font-size:12.5px; line-height:1.6; flex:1; }
+.dshh-float-iconbtn { border:none; background:transparent; color:var(--dsw-alias-label-secondary);
+  width:24px; height:24px; border-radius:6px; cursor:pointer; font-size:16px; line-height:1; flex:none; }
+.dshh-float-iconbtn:hover { background:var(--dsw-alias-bg-layer-2); color:var(--dsw-alias-label-primary); }
+.dshh-float-iconbtn:focus-visible { outline:2px solid var(--dsw-alias-brand-primary); outline-offset:1px; }
+
+.dshh-set { max-width:760px; padding:2px 2px 28px; display:flex; flex-direction:column; gap:16px; }
+.dshh-set-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.dshh-set-title { margin:0; font-size:18px; font-weight:650; }
+.dshh-set-sub { margin:5px 0 0; font-size:12px; line-height:1.65;
+  color:var(--dsw-alias-label-secondary); max-width:600px; }
+.dshh-set-save { font-size:11.5px; color:var(--dsw-alias-label-secondary); white-space:nowrap; padding-top:4px; }
+.dshh-set-save.is-saved { color:var(--dsw-alias-state-success-primary); }
+.dshh-set-save.is-error { color:var(--dsw-alias-state-error-primary); }
+.dshh-set-card { border:1px solid var(--dsw-alias-border-l1); border-radius:14px;
+  background:var(--dsw-alias-bg-layer-1); overflow:hidden; }
+.dshh-set-cardhead { padding:12px 16px; font-size:12.5px; font-weight:650;
+  border-bottom:1px solid var(--dsw-alias-border-l1); }
+.dshh-set-row { display:flex; align-items:center; justify-content:space-between; gap:18px;
+  padding:13px 16px; border-bottom:1px solid var(--dsw-alias-border-l1); }
+.dshh-set-row:last-child { border-bottom:none; }
+.dshh-set-copy { min-width:0; }
+.dshh-set-label { font-size:12.5px; font-weight:600; }
+.dshh-set-desc { margin-top:2px; font-size:11px; line-height:1.55; color:var(--dsw-alias-label-secondary); }
+.dshh-set-control { flex:none; display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.dshh-switch { width:40px; height:23px; padding:2px; border-radius:999px;
+  border:1px solid var(--dsw-alias-border-l2); background:var(--dsw-alias-bg-layer-2);
+  cursor:pointer; transition:background .15s,border-color .15s; }
+.dshh-switch.is-on { background:var(--dsw-alias-brand-primary); border-color:var(--dsw-alias-brand-primary); }
+.dshh-switch-thumb { display:block; width:17px; height:17px; border-radius:50%; background:#fff;
+  box-shadow:0 1px 3px rgba(15,23,42,.25); transition:transform .16s ease; }
+.dshh-switch.is-on .dshh-switch-thumb { transform:translateX(17px); }
+.dshh-switch:focus-visible { outline:2px solid var(--dsw-alias-brand-primary); outline-offset:2px; }
+.dshh-set-seg { display:inline-flex; padding:2px; gap:2px; border-radius:9px;
+  background:var(--dsw-alias-bg-layer-2); border:1px solid var(--dsw-alias-border-l1);
+  flex-wrap:wrap; }
+.dshh-set-segbtn { border:none; background:transparent; color:var(--dsw-alias-label-secondary);
+  font:inherit; font-size:11.5px; padding:4px 10px; border-radius:7px; cursor:pointer; }
+.dshh-set-segbtn.is-active { background:var(--dsw-alias-bg-overlay); color:var(--dsw-alias-label-primary);
+  box-shadow:0 1px 2px rgba(15,23,42,.16); font-weight:600; }
+.dshh-set-segbtn:focus-visible { outline:2px solid var(--dsw-alias-brand-primary); outline-offset:1px; }
+.dshh-set-input { width:220px; max-width:100%; background:var(--dsw-alias-bg-layer-2);
+  color:var(--dsw-alias-label-primary); border:1px solid var(--dsw-alias-border-l2);
+  border-radius:8px; padding:6px 9px; font:inherit; font-size:12px; }
+.dshh-set-input:focus-visible { outline:2px solid var(--dsw-alias-brand-primary); outline-offset:1px; }
+.dshh-set-avatar-row { align-items:flex-start; }
+.dshh-set-avatarpreview { width:64px; height:64px; flex:none; border-radius:50%; overflow:hidden;
+  border:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-layer-2);
+  display:flex; align-items:center; justify-content:center; }
+.dshh-set-avatarimg { width:100%; height:100%; object-fit:cover; display:block; }
+.dshh-set-avatarpreview .dshh-float-art { width:100%; height:100%; }
+.dshh-set-avatarmain { display:flex; flex-direction:column; gap:8px; min-width:0; flex:1; }
+.dshh-set-avataractions { display:flex; gap:8px; flex-wrap:wrap; }
+.dshh-set-avatartag { font-size:10.5px; color:var(--dsw-alias-label-secondary); }
+.dshh-set-select, .dshh-set-time { background:var(--dsw-alias-bg-layer-2); color:var(--dsw-alias-label-primary);
+  border:1px solid var(--dsw-alias-border-l2); border-radius:8px; padding:5px 7px;
+  font:inherit; font-size:12px; }
+.dshh-set-select:focus-visible, .dshh-set-time:focus-visible {
+  outline:2px solid var(--dsw-alias-brand-primary); outline-offset:1px; }
+.dshh-set-times { display:flex; align-items:center; gap:6px; font-size:11.5px;
+  color:var(--dsw-alias-label-secondary); }
+.dshh-set-note { margin:2px 2px 0; font-size:11px; line-height:1.7;
+  color:var(--dsw-alias-label-secondary); }
+.dshh-set-error { padding:10px 12px; border-radius:10px; font-size:12px;
+  border:1px solid var(--dsw-alias-state-error-primary); color:var(--dsw-alias-state-error-primary); }
+.dshh-set-reset { font-size:11.5px; }
+@keyframes dshhFloatBob { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-3px) } }
+@keyframes dshhFloatPop { from { transform:scale(.6); opacity:0 } to { transform:scale(1); opacity:1 } }
+@keyframes dshhFloatRise { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
+@media (prefers-reduced-motion: reduce) {
+  .dshh-float-inner { animation:none !important; }
+  .dshh-float-card, .dshh-float-bubble { animation:none; }
+}
+@media (max-width:620px) {
+  .dshh-set-row { flex-direction:column; align-items:flex-start; }
+  .dshh-set-control { width:100%; justify-content:flex-end; }
+  .dshh-set-avatarmain { width:100%; }
+}
+
+/* ---------- metabolic ledger (代谢对账簿) ---------- */
+/* Coverage-driven surfaces: neutral statuses, never red verdicts. */
+.dshh-hero-dual { display:flex; flex-direction:column; gap:8px; }
+.dshh-hero-switch { display:inline-flex; align-self:flex-start; gap:3px; padding:3px;
+  border:1px solid rgba(255,255,255,.14); border-radius:999px; background:#12151C; }
+.dshh-hero-switch-btn { border:none; background:transparent; color:rgba(242,244,248,.62);
+  font:inherit; font-size:11.5px; font-weight:650; padding:5px 15px; border-radius:999px;
+  cursor:pointer; }
+.dshh-hero-switch-btn:hover { color:#F2F4F8; }
+.dshh-hero-switch-btn[data-active='true'] { background:${CUT_ACCENT}; color:${CUT_BG_FROM}; }
+.dshh-met-heroconfirm { position:relative; z-index:1; margin-top:12px; padding:10px 12px;
+  border-radius:10px; font-size:11px; line-height:1.6; color:rgba(243,244,246,.78);
+  border:1px solid rgba(215,255,63,.28); background:rgba(215,255,63,.07); }
+
+.dshh-met-accountgrid { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.dshh-met-labtile .dshh-account-role { color:${CUT_HOT}; border-color:${CUT_HOT}; }
+.dshh-met-crosslink { display:flex; align-items:center; justify-content:space-between;
+  gap:12px; flex-wrap:wrap; }
+
+.dshh-met-rows { display:flex; flex-direction:column; }
+.dshh-met-row { display:grid; align-items:start; gap:4px 10px; width:100%;
+  grid-template-columns:minmax(96px,1fr) minmax(112px,1.05fr) minmax(112px,1.15fr) minmax(96px,1fr);
+  padding:10px 2px; border:none; border-bottom:1px solid var(--dsw-alias-border-l1);
+  background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.dshh-met-row:last-child { border-bottom:none; }
+.dshh-met-row:hover { background:var(--dsw-alias-bg-layer-2); }
+.dshh-met-row:focus-visible { outline:2px solid var(--dsw-alias-brand-primary); outline-offset:1px; }
+.dshh-met-row-name { display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  min-width:0; font-size:12px; font-weight:650; }
+.dshh-met-row-value { font-size:13px; font-weight:640; font-variant-numeric:tabular-nums;
+  min-width:0; overflow-wrap:anywhere; }
+.dshh-met-row-value small, .dshh-met-row-band small { display:block; margin-top:2px;
+  font-size:9.5px; font-weight:400; line-height:1.5; color:var(--dsw-alias-label-secondary); }
+.dshh-met-row-band { font-size:10.5px; line-height:1.5; color:var(--dsw-alias-label-secondary);
+  min-width:0; }
+.dshh-met-row-side { display:flex; flex-direction:column; align-items:flex-start; gap:3px;
+  font-size:10.5px; color:var(--dsw-alias-label-secondary); font-variant-numeric:tabular-nums; }
+.dshh-met-status { display:inline-block; padding:0 7px; border-radius:999px;
+  font-size:10px; font-weight:650; color:var(--dsw-alias-label-primary);
+  border:1px solid var(--dsw-alias-border-l2); background:rgba(255,255,255,.045); }
+.dshh-met-status[data-status='unknown'] { color:var(--dsw-alias-label-secondary);
+  border-style:dashed; background:transparent; }
+/* Above/below stay neutral: no warn colour, no verdict framing. */
+.dshh-met-status[data-status='above'], .dshh-met-status[data-status='below'] {
+  border-color:rgba(255,255,255,.28); background:rgba(255,255,255,.075); }
+.dshh-met-rowmeta { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:4px 12px;
+  font-size:10px; color:var(--dsw-alias-label-secondary); font-variant-numeric:tabular-nums; }
+.dshh-met-pill { display:inline-flex; align-items:center; padding:0 6px; border-radius:999px;
+  font-size:9.5px; font-weight:600; color:var(--dsw-alias-label-secondary);
+  border:1px solid var(--dsw-alias-border-l2); }
+.dshh-met-coverage { font-size:11px; font-weight:650; color:var(--dsw-alias-label-secondary);
+  font-variant-numeric:tabular-nums; white-space:nowrap; }
+.dshh-met-more { margin-top:10px; align-self:flex-start; }
+.dshh-met-extra { margin-top:4px; }
+.dshh-met-statement-note { margin-top:10px; font-size:10.5px; line-height:1.7;
+  color:var(--dsw-alias-label-secondary); }
+.dshh-met-hint { margin-top:10px; padding:9px 11px; border-radius:10px; font-size:10.5px;
+  line-height:1.7; color:var(--dsw-alias-label-secondary);
+  border:1px solid rgba(215,255,63,.16); background:rgba(215,255,63,.05); }
+
+.dshh-met-fieldgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:8px 10px; }
+.dshh-met-fieldcell { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.dshh-met-inline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.dshh-met-qlist { display:flex; flex-direction:column; gap:6px; margin:6px 0 10px; }
+.dshh-met-qrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  font-size:11.5px; line-height:1.55; }
+.dshh-met-visit-section { margin-top:14px; }
+.dshh-met-visit-title { font-size:12px; font-weight:650; }
+.dshh-met-visit-lines { margin:4px 0 0; padding-left:16px; font-size:11.5px;
+  line-height:1.75; color:var(--dsw-alias-label-primary); }
+.dshh-met-visit-lines li { margin-bottom:2px; overflow-wrap:anywhere; }
+
+@media (max-width:720px) {
+  .dshh-met-accountgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dshh-met-row { grid-template-columns:minmax(78px,1fr) minmax(92px,1.1fr); }
+  .dshh-met-row-side { grid-column:2; flex-direction:row; flex-wrap:wrap; align-items:center; }
+  .dshh-met-rowmeta { grid-column:1 / -1; }
+  .dshh-met-coverage { white-space:normal; text-align:right; }
 }
 `
 
@@ -1256,11 +1825,36 @@ window.__ModuleLoader__.load({
       const allDone = lean
         ? recordToday && photoToday && accountTotal > 0 && accountMet === accountTotal
         : recordToday && (trainingTarget === 0 || trainingDays >= trainingTarget) && !proteinLow
+      // Metabolic ledger context: behaviour accounts only, never the numbers
+      // themselves. Present independently so the coach copy switches to
+      // 测 / 吃 / 动 / 睡 / 化验 / 复查 when a metabolic goal is active.
+      const metabolicGoal = activeGoals.find((item) => item.code === 'metabolic') ?? null
+      const metabolic = Boolean(metabolicGoal)
+      const metabolicList = metabolic ? metabolicAccounts(metabolicGoal) : []
+      const metabolicOf = (code) => metabolicList.find((account) => account?.code === code) ?? null
+      const metabolicMet = metabolicList.filter((account) => account?.today?.met).length
       return {
         goal, lean, recordToday, photoToday, trainingDays, trainingTarget,
         proteinLow, proteinMet, sleepMet, waterMet, trainingMet,
         accountMet, accountTotal, streak, allDone,
         season: lean ? seasonMeta(leanGoal) : null,
+        metabolic: metabolic
+          ? {
+              accounts: metabolicList,
+              measure: metabolicOf('measure'),
+              diet: metabolicOf('diet'),
+              move: metabolicOf('move'),
+              sleep: metabolicOf('sleep'),
+              weekly: metabolicWeekly(metabolicGoal),
+              labs: metabolicLabs(metabolicGoal),
+              season: metabolicSeasonMeta(metabolicGoal),
+              accountMet: metabolicMet,
+              accountTotal: metabolicList.length,
+              allDone: metabolicList.length > 0 && metabolicMet >= metabolicList.length,
+              recordToday,
+              streak,
+            }
+          : null,
       }
     }
 
@@ -1274,7 +1868,7 @@ window.__ModuleLoader__.load({
       const hard = mode === 'hard'
       const lines = []
 
-      if (ctx.lean) {
+      if (ctx.lean && !ctx.metabolic) {
         if (!ctx.recordToday && ctx.accountMet === 0) {
           lines.push(hard
             ? '账户今天还是空的。存一笔，哪怕 20 分钟。'
@@ -1290,8 +1884,8 @@ window.__ModuleLoader__.load({
         }
         if (ctx.proteinLow || (ctx.accountTotal > 0 && !ctx.proteinMet && ctx.recordToday)) {
           lines.push(hard
-            ? '蛋白还没存够。肌肉要的是原料，不是情绪。'
-            : '蛋白今天还没到参考区间，下一餐留意一下。')
+            ? '大餐的蛋白质还没存够。肌肉要的是原料，不是情绪。'
+            : '大餐的蛋白质今天还没到参考区间，下一餐留意一下。')
         }
         if (!ctx.sleepMet && (ctx.recordToday || ctx.accountMet > 0)) {
           lines.push(hard
@@ -1332,6 +1926,81 @@ window.__ModuleLoader__.load({
             : '今天四笔都存进去了，保持节奏。')
           lines.push(hard ? '账户有余额了。继续。' : '今天存得挺完整，明天见。')
         }
+      } else if (ctx.metabolic) {
+        // Metabolic accounts: measure / diet / move / sleep + one lab event.
+        const meta = ctx.metabolic
+        const measureWeek = meta.measure?.week ?? {}
+        const dietWeek = meta.diet?.week ?? {}
+        const moveWeek = meta.move?.week ?? {}
+        const sleepWeek = meta.sleep?.week ?? {}
+        const measureTarget = Number(measureWeek.target ?? 3) || 3
+        const dietTarget = Number(dietWeek.target ?? 4) || 4
+        const moveTarget = Number(moveWeek.target ?? 5) || 5
+        const sleepTarget = Number(sleepWeek.target ?? 5) || 5
+        const moveMinutes = Number(meta.weekly?.activityMinutes ?? 0) || 0
+        if (!ctx.recordToday && meta.accountMet === 0) {
+          lines.push(hard
+            ? '账户今天还是空的。存一笔，哪怕量一次血压。'
+            : '今天还没有存入。先记一笔，量一次也算。')
+          lines.push(hard
+            ? '测、吃、动、睡都空着。先挑一个，存进去再说。'
+            : '挑一个账户先记一笔，今天的进展就开始了。')
+        }
+        if (Number(measureWeek.met ?? 0) < measureTarget) {
+          lines.push(hard
+            ? `本周监测 ${measureWeek.met ?? 0}/${measureTarget} 天。复查前 7 天要连续测，平时先存 3 天。`
+            : `本周监测 ${measureWeek.met ?? 0}/${measureTarget} 天，先记一次家庭监测。`)
+        }
+        if (Number(dietWeek.met ?? 0) < dietTarget) {
+          lines.push(hard
+            ? `饮食记录 ${dietWeek.met ?? 0}/${dietTarget} 天。拍一张也算，不用算到克。`
+            : `饮食记录 ${dietWeek.met ?? 0}/${dietTarget} 天，记一餐就行。`)
+        }
+        if (Number(moveWeek.met ?? 0) < moveTarget) {
+          lines.push(hard
+            ? `活动 ${moveMinutes}/150 分钟。先走 20 分钟，账户就动起来了。`
+            : `活动累计 ${moveMinutes} 分钟；先记一次短的活动。`)
+        }
+        if (Number(sleepWeek.met ?? 0) < sleepTarget) {
+          lines.push(hard
+            ? `睡眠 ${sleepWeek.met ?? 0}/${sleepTarget} 天。今晚先把关灯时间提前 30 分钟。`
+            : `睡眠 ${sleepWeek.met ?? 0}/${sleepTarget} 天，今晚早点休息。`)
+        }
+        if (meta.labs && !meta.labs.hasCycleLab) {
+          lines.push(hard
+            ? '本周期还没有化验记录。有报告就一次录完，别等复诊才翻箱倒柜。'
+            : '有化验单就一次录完，之后对账单会更完整。')
+        }
+        if (ctx.streak >= 2) {
+          lines.push(hard
+            ? `连续 ${ctx.streak} 天。今天也别断。`
+            : `连续 ${ctx.streak} 天记录，保持这个节奏。`)
+        }
+        if (meta.season?.hasSeason) {
+          if (meta.season.ended) {
+            lines.push(hard
+              ? '本周期结束了。生成就诊摘要，复诊带走一页纸。'
+              : '这个复查周期结束了，可以生成就诊摘要。')
+          } else {
+            const checkpoint = (meta.season.checkpoints ?? []).find((mark) =>
+              mark?.reached && Number(mark?.week) === Number(meta.season.week))
+            if (checkpoint) {
+              lines.push(hard
+                ? `${checkpoint.label ?? `W${checkpoint.week}`} 检查点到了。打开对账单看一眼。`
+                : `到 ${checkpoint.label ?? `W${checkpoint.week}`} 检查点了，可以看看本周对账单。`)
+            } else if (typeof meta.season.daysLeft === 'number' && meta.season.daysLeft <= 7) {
+              lines.push(hard
+                ? `距复查还有 ${meta.season.daysLeft} 天。复查前 7 天早晚各测 1 次，连续 7 天弃首日。`
+                : `距复查还有 ${meta.season.daysLeft} 天，可以开始连续测几天血压。`)
+            }
+          }
+        }
+        if (meta.allDone) {
+          lines.push(hard
+            ? '今天四笔都存进去了。明天照这个来。'
+            : '今天四笔都存进去了，保持节奏。')
+          lines.push(hard ? '账户有余额了。继续。' : '今天存得挺完整，明天见。')
+        }
       } else {
         if (!ctx.recordToday) {
           lines.push(hard
@@ -1348,7 +2017,7 @@ window.__ModuleLoader__.load({
         }
         if (ctx.proteinLow) {
           lines.push(hard
-            ? '蛋白记录还空着。下一餐把它记上。'
+            ? '大餐的蛋白质记录还空着。下一餐把它记上。'
             : '今天的蛋白质记录还没到参考区间，下一餐可以留意一下。')
         }
         if (ctx.streak >= 2) {
@@ -1444,7 +2113,7 @@ window.__ModuleLoader__.load({
     const PLACE_FAVORITES_KEY = 'dsh-health.places.v1'
     const SQUAD_ACCOUNTS = [
       { code: 'training', name: '大练' },
-      { code: 'protein', name: '蛋白' },
+      { code: 'protein', name: '大餐' },
       { code: 'sleep', name: '大睡' },
       { code: 'water', name: '大水' },
     ]
@@ -1508,7 +2177,7 @@ window.__ModuleLoader__.load({
     const LEAN_ACCOUNT_FALLBACKS = [
       { code: 'training', name: '大练', role: '本金', metric: 'training', unit: 'min',
         kind: 'weeklyDays', targetDisplay: '近 7 天 ≥ 2 天' },
-      { code: 'protein', name: '蛋白', role: '原料', metric: 'protein', unit: 'g',
+      { code: 'protein', name: '大餐', role: '原料', metric: 'protein', unit: 'g',
         kind: 'perKg', targetDisplay: '按体重换算（待补体重）' },
       { code: 'sleep', name: '大睡', role: '修复', metric: 'sleep', unit: 'h',
         kind: 'range', targetDisplay: '目标 7–9 h' },
@@ -1856,7 +2525,7 @@ window.__ModuleLoader__.load({
       }
       lines.push(`照片：${review.photoCount} 张 · 覆盖 ${review.photoDays} 天 · 记录天数：${review.recordDays} 天`)
       for (const row of review.body ?? []) {
-        const unit = row?.unit ? ` ${row.unit}` : ''
+        const unit = row?.unit === '%' ? '%' : row?.unit ? ` ${row.unit}` : ''
         const base = row?.baseline == null ? '—' : `${row.baseline}${unit}`
         const latestValue = row?.latest ?? row?.currentDisplay
         const latest = latestValue == null ? '—' : `${latestValue}${unit}`
@@ -1867,6 +2536,532 @@ window.__ModuleLoader__.load({
       lines.push(`说明：${review.note}`)
       lines.push(LEAN_DISCLAIMER)
       return lines.join('\n')
+    }
+
+    // ------------------------------------------------------- metabolic ledger
+    //
+    // 「代谢对账簿」：测 / 吃 / 动 / 睡四个行为账户可计分；腰围、血压、血糖、
+    // 血脂只做「对账单」，展示参考区间、均值与变化，不计分、不排名、不下结论。
+    // Every helper below tolerates an older host that has not shipped the
+    // `metabolic` payload yet: missing fields become neutral defaults instead of
+    // crashing the panel, and the caller falls back to the legacy dashboard.
+
+    const METABOLIC_ACCOUNT_FALLBACKS = [
+      { code: 'measure', name: '测', role: '证据', metric: 'measure', unit: '次',
+        kind: 'monitor', targetDisplay: '每周 ≥3 天', depositLine: '当天有家庭监测记录' },
+      { code: 'diet', name: '吃', role: '记录', metric: 'diet', unit: '餐',
+        kind: 'diet', targetDisplay: '每周 ≥4 天', depositLine: '当天记录至少一餐' },
+      { code: 'move', name: '动', role: '活动', metric: 'activity', unit: 'min',
+        kind: 'activity', targetDisplay: '每周 ≥5 天 · 累计 ≥150 分钟', depositLine: '当天 ≥30 分钟' },
+      { code: 'sleep', name: '睡', role: '修复', metric: 'sleep', unit: 'h',
+        kind: 'range', targetDisplay: '每周 ≥5 天 ≥7 h', depositLine: '≥7 h/日' },
+    ]
+
+    const METABOLIC_CORE_FALLBACKS = [
+      { code: 'bp', aliases: ['bp', 'sbp'], name: '血压', unit: 'mmHg', role: 'core',
+        valueLabel: '近 7 天均值', bandLabel: '代谢组分参考 <130/85', clickCode: 'sbp' },
+      { code: 'waist', aliases: ['waist'], name: '腰围', unit: 'cm', role: 'core',
+        valueLabel: '最近一次', bandLabel: '参考 <90（男）/ <85（女）' },
+      { code: 'fpg', aliases: ['fpg'], name: '空腹血糖', unit: 'mmol/L', role: 'core',
+        valueLabel: '最近一次', bandLabel: '参考 3.9–6.1' },
+      { code: 'tg', aliases: ['tg'], name: '甘油三酯', unit: 'mmol/L', role: 'core',
+        valueLabel: '最近化验', bandLabel: '参考 <1.7' },
+      { code: 'hdl', aliases: ['hdl'], name: '高密度脂蛋白胆固醇', unit: 'mmol/L', role: 'core',
+        valueLabel: '最近化验', bandLabel: '代谢组分参考 ≥1.04' },
+    ]
+
+    const METABOLIC_EXTRA_FALLBACKS = [
+      { code: 'ua', aliases: ['ua'], name: '尿酸', unit: 'μmol/L', role: 'extra',
+        valueLabel: '最近化验', bandLabel: '参考男 <420 / 女 <360' },
+      { code: 'ldl', aliases: ['ldl'], name: '低密度脂蛋白胆固醇', unit: 'mmol/L', role: 'extra',
+        valueLabel: '最近化验', bandLabel: '一般参考 <3.4；风险分层目标由医生设定' },
+      { code: 'hba1c', aliases: ['hba1c'], name: '糖化血红蛋白', unit: '%', role: 'extra',
+        valueLabel: '最近化验', bandLabel: '非糖尿病人群参考 <6.0' },
+      { code: 'ppg', aliases: ['ppg'], name: '餐后2小时血糖', unit: 'mmol/L', role: 'extra',
+        valueLabel: '最近一次', bandLabel: '参考 <7.8' },
+      { code: 'weight', aliases: ['weight', 'bmi'], name: '体重 / BMI', unit: '', role: 'extra',
+        valueLabel: '最近一次', bandLabel: '只观察趋势，不设通用目标' },
+    ]
+
+    const METABOLIC_STATUS_TEXT = {
+      within: '参考内',
+      above: '高于参考',
+      below: '低于参考',
+      // A single reading is a first-class state, never a verdict.
+      single: '单次 · 仅参考',
+      unknown: '暂无数据',
+    }
+
+    const METABOLIC_CONTEXTS = [
+      { code: 'morning', name: '晨起' },
+      { code: 'evening', name: '睡前' },
+      { code: 'fasting', name: '空腹' },
+      { code: 'postprandial', name: '餐后' },
+      { code: 'random', name: '随机' },
+    ]
+
+    /** PRD §10 fixed disclaimer (ledger pages and the cycle pane). */
+    const METABOLIC_DISCLAIMER = '本工具仅用于记录和展示你自行测量的健康数据，并基于数据做统计性描述。'
+      + '所有内容不构成医疗诊断、治疗建议或用药指导。'
+      + '参考区间为人群通用参考值，不代表个人目标值。'
+      + '本工具不提供诊断、分期或用药相关内容；是否患病、个人目标与复查安排请以医生意见为准。'
+
+    /** PRD §10 fixed disclaimer for the playbook. */
+    const METABOLIC_PLAYBOOK_DISCLAIMER = '本工具不是诊断工具，也不是处方。'
+      + '参考区间来自中国指南/国家膳食规范/WHO 公开文件（详见每张卡片来源），只用于记录与对照；'
+      + '不构成对任何个人的诊断、治疗、用药、食谱或训练计划。是否患病、目标值与复查安排请以医生意见为准。'
+
+    /** Visit-summary footer (contract `visitSummary.disclaimer`). */
+    const METABOLIC_SUMMARY_DISCLAIMER = '本摘要由用户自行记录的数据自动汇总，不含任何诊断、治疗或用药建议；请以医生判断为准。'
+
+    const METABOLIC_VISIT_QUESTIONS = [
+      '我的个人目标值应该是多少？',
+      '下次复查哪些项目、什么时候？',
+      '家庭血压均值与诊室血压不一致时，以哪个为准？',
+    ]
+
+    const METABOLIC_QUESTIONS_KEY = 'dsh-health.visitQuestions.'
+
+    // Public references only; the playbook explains the mechanism, not a plan.
+    const METABOLIC_SOURCES = [
+      { label: '中国营养学会 · 中国居民膳食指南（2022）八准则',
+        url: 'http://dg.cnsoc.org/article/04/J4-AsD_DR3OLQMnHG0-jZA.html' },
+      { label: '中国高血压防治指南（2024）要点解读（人民日报健康客户端转载）',
+        url: 'https://m.163.com/dy/article/J9GJ6BIN052583KJ.html' },
+      { label: '家庭血压监测指南（2019）速读：早晚各 1 次 × 2–3 遍，7 天弃首日',
+        url: 'https://news.medlive.cn/heart/info-progress/show-157334_129.html' },
+      { label: '中国血脂管理指南（2023）题录',
+        url: 'https://rs.yiigle.com/cmaid/1449955' },
+      { label: '中国糖尿病防治指南（2024）全文转载（山西省疾控中心）',
+        url: 'https://www.sxcdc.cn/jkfw/jsbz/art/2025/art_a6322e70d224461f900e02e70b2a937c.html' },
+      { label: '中国人群身体活动指南（2021）解读：150–300 分钟/周中等强度',
+        url: 'https://www.163.com/dy/article/GSE4IBSP05347DU2.html' },
+    ]
+
+    function metabolicGoalOf(goals) {
+      return (goals ?? []).find((goal) => goal && goal.code === 'metabolic') ?? null
+    }
+
+    function metabolicActiveGoalOf(goals) {
+      return (goals ?? []).find((goal) =>
+        goal && goal.code === 'metabolic' && goal.status === 'active') ?? null
+    }
+
+    /**
+     * New payload ready? The contract ships `season` + `accounts` + `metabolic`
+     * together; if any is missing we keep the legacy metabolic dashboard rather
+     * than render empty ledgers.
+     */
+    function metabolicLedgerReady(goal) {
+      return Boolean(goal
+        && goal.season
+        && Array.isArray(goal.accounts) && goal.accounts.length > 0
+        && goal.metabolic && typeof goal.metabolic === 'object')
+    }
+
+    /** The four behaviour accounts, normalised against the PRD defaults. */
+    function metabolicAccounts(goal) {
+      const list = Array.isArray(goal?.accounts) ? goal.accounts.filter(Boolean) : []
+      if (list.length > 0) {
+        return list.map((account) => {
+          const fallback = METABOLIC_ACCOUNT_FALLBACKS.find((item) =>
+            item.code === account.code || item.metric === account.metric) ?? {}
+          return { ...fallback, ...account }
+        })
+      }
+      return METABOLIC_ACCOUNT_FALLBACKS.map((account) => ({
+        ...account, today: null, week: null, season: null,
+      }))
+    }
+
+    /** Review-cycle fields (`season.kind = "review"`), with neutral fallbacks. */
+    function metabolicSeasonMeta(goal) {
+      const base = seasonMeta(goal)
+      const weeks = base.weeks
+      const week = base.week
+      const label = goal?.season?.label
+        || (base.hasSeason && week > 0
+          ? `第 ${base.no} 个复查周期 · 第 ${Math.min(week, weeks)} 周 / ${weeks} 周`
+          : '')
+      return {
+        ...base,
+        kind: goal?.season?.kind ?? 'review',
+        label,
+        weeks,
+        week,
+      }
+    }
+
+    function metabolicWeekly(goal) {
+      const accounts = metabolicAccounts(goal)
+      const weekly = goal?.weekly ?? {}
+      let deposits = typeof weekly.deposits === 'number' ? weekly.deposits : null
+      let max = typeof weekly.max === 'number' ? weekly.max : null
+      if (deposits === null || max === null) {
+        let sum = 0
+        let capacity = 0
+        for (const account of accounts) {
+          const week = account?.week
+          if (typeof week?.met === 'number') sum += week.met
+          capacity += typeof week?.max === 'number' ? week.max : 7
+        }
+        if (deposits === null) deposits = sum
+        if (max === null) max = capacity || 28
+      }
+      return {
+        start: weekly.start ?? null,
+        end: weekly.end ?? null,
+        deposits,
+        max,
+        recordDays: typeof weekly.recordDays === 'number' ? weekly.recordDays : null,
+        bpDays: typeof weekly.bpDays === 'number' ? weekly.bpDays : null,
+        mealDays: typeof weekly.mealDays === 'number' ? weekly.mealDays : null,
+        activityMinutes: typeof weekly.activityMinutes === 'number' ? weekly.activityMinutes : null,
+        labDone: typeof weekly.labDone === 'boolean' ? weekly.labDone : null,
+      }
+    }
+
+    function metabolicLabs(goal) {
+      const labs = goal?.metabolic?.labs ?? {}
+      const items = Array.isArray(labs.items) ? labs.items.filter(Boolean) : []
+      const cycleCount = typeof labs.cycleCount === 'number' ? labs.cycleCount : null
+      const hasCycleLab = Boolean(labs.hasCycleLab)
+        || items.length > 0
+        || (cycleCount !== null && cycleCount > 0)
+      return {
+        latestAt: labs.latestAt ?? labs.latestDate ?? null,
+        latestDate: labs.latestDate ?? labs.latestAt ?? null,
+        cycleCount: cycleCount ?? (hasCycleLab ? 1 : 0),
+        hasCycleLab,
+        items,
+      }
+    }
+
+    function metabolicSugary(goal) {
+      const sugary = goal?.metabolic?.sugary ?? null
+      if (!sugary) return null
+      return {
+        weekMl: typeof sugary.weekMl === 'number' ? sugary.weekMl : null,
+        weekCount: typeof sugary.weekCount === 'number' ? sugary.weekCount : null,
+        days7: typeof sugary.days7 === 'number' ? sugary.days7 : null,
+        note: sugary.note ?? '只记录，不评价。',
+      }
+    }
+
+    function signedValue(value, unit) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
+      const sign = value > 0 ? '+' : ''
+      const text = String(Math.round(value * 100) / 100)
+      return `${sign}${text}${unit ? ` ${unit}` : ''}`
+    }
+
+    /** Nearest change line for a statement row; never framed as good/bad. */
+    function metabolicDelta(row) {
+      if (!row) return null
+      // Host text already carries its own comparison window.
+      const labelFor = (text, fallback) => (String(text).includes('较') ? '' : fallback)
+      if (row.deltaPrevDisplay) {
+        return { text: row.deltaPrevDisplay, label: labelFor(row.deltaPrevDisplay, '较上次化验') }
+      }
+      if (typeof row.deltaPrev === 'number') {
+        return { text: signedValue(row.deltaPrev, row.unit), label: '较上次化验' }
+      }
+      if (row.deltaDisplay) {
+        const fallback = row.kind === 'homeAvg' ? '较前 7 天'
+          : row.kind === 'latest' ? '较 30 天' : '较上次'
+        return { text: row.deltaDisplay, label: labelFor(row.deltaDisplay, fallback) }
+      }
+      if (typeof row.delta30 === 'number') {
+        return { text: signedValue(row.delta30, row.unit), label: '较 30 天' }
+      }
+      return null
+    }
+
+    /**
+     * Statement rows: core five always rendered (missing rows show 「暂无数据」),
+     * additional items are collapsible in the UI. No scoring, no 「符合 N 项」.
+     */
+    function metabolicStatementModel(goal) {
+      const statement = goal?.metabolic?.statement ?? null
+      const rawRows = Array.isArray(statement?.rows)
+        ? statement.rows.filter((row) => row && row.code)
+        : []
+      const descriptors = [...METABOLIC_CORE_FALLBACKS, ...METABOLIC_EXTRA_FALLBACKS]
+      const rows = descriptors.map((fallback) => {
+        const aliases = fallback.aliases ?? [fallback.code]
+        const raw = rawRows.find((row) => aliases.includes(row.code)) ?? null
+        const status = raw && METABOLIC_STATUS_TEXT[raw.status] ? raw.status : 'unknown'
+        const valueText = raw?.currentDisplay != null
+          ? String(raw.currentDisplay)
+          : (typeof raw?.current === 'number' ? fmtNumber(raw.current, 2) : null)
+        const valueLabel = raw?.valueLabel
+          ?? (valueText == null ? '暂无数据' : fallback.valueLabel ?? '')
+        return {
+          ...fallback,
+          ...(raw ?? {}),
+          code: fallback.code,
+          name: raw?.name ?? fallback.name,
+          role: fallback.role,
+          unit: raw?.unit ?? fallback.unit ?? '',
+          status,
+          statusText: raw?.statusText ?? METABOLIC_STATUS_TEXT[status],
+          valueText,
+          valueLabel,
+          measuredAt: raw?.measuredAt ?? null,
+          single: Boolean(raw?.single),
+          bandLabel: raw?.band?.label ?? fallback.bandLabel ?? '只观察趋势',
+          delta: metabolicDelta(raw ?? {}),
+          note: raw?.note ?? '',
+          clickCode: fallback.clickCode ?? fallback.code,
+        }
+      })
+      return {
+        rows,
+        core: rows.filter((row) => row.role === 'core'),
+        extra: rows.filter((row) => row.role === 'extra'),
+        note: statement?.note
+          ?? '本页只做参考区间与趋势展示，不计算「符合几项」，不构成诊断。是否患病请医生判断。',
+      }
+    }
+
+    function metabolicCoverage(goal) {
+      const statement = goal?.metabolic?.statement ?? null
+      const total = typeof statement?.coverage?.total === 'number' && statement.coverage.total > 0
+        ? statement.coverage.total
+        : 5
+      const computed = metabolicStatementModel(goal).core
+        .filter((row) => row.valueText != null).length
+      const recorded = typeof statement?.coverage?.recorded === 'number'
+        ? statement.coverage.recorded
+        : computed
+      return { recorded: Math.max(0, Math.min(total, recorded)), total }
+    }
+
+    /** Cycle review payload (`metabolic.review`), derived when absent. */
+    function metabolicReview(goal) {
+      const season = metabolicSeasonMeta(goal)
+      const accounts = metabolicAccounts(goal)
+      const weekly = metabolicWeekly(goal)
+      const review = goal?.metabolic?.review ?? {}
+      const byAccount = Array.isArray(review.byAccount) && review.byAccount.length > 0
+        ? review.byAccount
+        : accounts.map((account) => {
+            const stat = account?.season ?? {}
+            return {
+              code: account?.code,
+              name: account?.name ?? account?.metric ?? '账户',
+              deposits: stat.deposits ?? 0,
+              max: stat.max ?? 0,
+              rate: stat.rate ?? null,
+              label: stat.label ?? `${stat.deposits ?? 0} 天`,
+            }
+          })
+      const deposits = typeof review.deposits === 'number'
+        ? review.deposits
+        : byAccount.reduce((sum, item) => sum + (Number(item?.deposits) || 0), 0)
+      const max = typeof review.max === 'number' ? review.max : null
+      const statementRows = metabolicStatementModel(goal).rows
+      const unitOf = (code) => statementRows.find((row) => row.code === code)?.unit ?? ''
+      const bpDisplay = statementRows.find((row) => row.code === 'bp')?.valueText ?? null
+      const statement = Array.isArray(review.statement) && review.statement.length > 0
+        ? review.statement.filter(Boolean).map((row) => ({
+            ...row,
+            unit: row.unit ?? unitOf(row.code),
+            // BP's latest is a 7-day mean pair; the bare sys value alone
+            // would misrepresent the row, so keep the display pair too.
+            latestDisplay: row.code === 'bp' ? (row.latestDisplay ?? bpDisplay) : row.latestDisplay,
+          }))
+        : statementRows
+            .filter((row) => row.role === 'core' && row.valueText != null)
+            .map((row) => ({
+              code: row.code,
+              name: row.name,
+              unit: row.unit,
+              baseline: null,
+              baselineAt: null,
+              latest: row.valueText,
+              latestAt: row.measuredAt,
+              delta: null,
+              deltaDisplay: null,
+            }))
+      const numberOrNull = (value) =>
+        (typeof value === 'number' && Number.isFinite(value) ? value : null)
+      return {
+        ended: review.ended ?? season.ended,
+        week: numberOrNull(review.week) ?? season.week,
+        weeks: numberOrNull(review.weeks) ?? season.weeks,
+        days: numberOrNull(review.days) ?? season.day,
+        daysLeft: numberOrNull(review.daysLeft) ?? season.daysLeft,
+        deposits,
+        max,
+        rate: typeof review.rate === 'number'
+          ? review.rate
+          : (max && max > 0 ? deposits / max : null),
+        byAccount,
+        recordDays: numberOrNull(review.recordDays) ?? weekly.recordDays,
+        bpDays: numberOrNull(review.bpDays) ?? weekly.bpDays,
+        mealDays: numberOrNull(review.mealDays) ?? weekly.mealDays,
+        activityMinutes: numberOrNull(review.activityMinutes) ?? weekly.activityMinutes,
+        sleepAvg: numberOrNull(review.sleepAvg),
+        waterAvg: numberOrNull(review.waterAvg),
+        sugaryMl: numberOrNull(review.sugaryMl),
+        labCount: numberOrNull(review.labCount) ?? metabolicLabs(goal).cycleCount,
+        latestLabAt: review.latestLabAt ?? metabolicLabs(goal).latestAt,
+        statement,
+        note: review.note
+          ?? '本周期只陈述记录事实；指标变化受设备、饮食、水分、作息等影响，不构成效果承诺。',
+      }
+    }
+
+    /** Normalised visit-summary model; rebuilds a descriptive one when absent. */
+    function metabolicVisitModel(goal) {
+      const visit = goal?.metabolic?.visitSummary ?? null
+      const season = metabolicSeasonMeta(goal)
+      const hasVisit = Boolean(visit) && (
+        (Array.isArray(visit.sections) && visit.sections.length > 0)
+        || (typeof visit.text === 'string' && visit.text.length > 0)
+      )
+      if (hasVisit) {
+        return {
+          title: visit.title ?? '就诊摘要',
+          generatedAt: visit.generatedAt ?? '',
+          period: visit.period ?? (season.label || ''),
+          sections: (Array.isArray(visit.sections) ? visit.sections : [])
+            .filter(Boolean)
+            .map((section) => ({
+              id: section.id ?? section.title,
+              title: section.title ?? '记录',
+              lines: Array.isArray(section.lines)
+                ? section.lines.filter((line) => typeof line === 'string' && line)
+                : [],
+            })),
+          questions: Array.isArray(visit.questions) && visit.questions.length > 0
+            ? visit.questions.filter((item) => typeof item === 'string' && item)
+            : METABOLIC_VISIT_QUESTIONS.slice(),
+          text: typeof visit.text === 'string' ? visit.text : '',
+          note: visit.note ?? '可在下面补充你想问医生的问题；本摘要不含诊断或建议。',
+          disclaimer: visit.disclaimer ?? METABOLIC_SUMMARY_DISCLAIMER,
+        }
+      }
+
+      const review = metabolicReview(goal)
+      const weekly = metabolicWeekly(goal)
+      const labs = metabolicLabs(goal)
+      const statement = metabolicStatementModel(goal)
+      const sections = []
+      const coreLines = statement.core
+        .filter((row) => row.valueText != null)
+        .map((row) => `${row.name}：${row.valueText}${row.unit === '%' ? '%' : row.unit ? ` ${row.unit}` : ''}`
+          + `（${row.valueLabel}${row.measuredAt ? ` ${row.measuredAt}` : ''}）`)
+      if (coreLines.length > 0) {
+        sections.push({ id: 'monitor', title: '核心指标', lines: coreLines })
+      }
+      if (labs.items.length > 0) {
+        sections.push({
+          id: 'labs',
+          title: '最近化验',
+          lines: [`${localDateOf(labs.latestAt) || '—'}：${labs.items.map((item) =>
+            `${item.name ?? item.code ?? '项目'} ${item.display ?? '—'}${item.unit ? ` ${item.unit}` : ''}`)
+            .join('，')}`],
+        })
+      }
+      const behaviour = []
+      if (weekly.recordDays != null) behaviour.push(`近 7 天有记录 ${weekly.recordDays} 天`)
+      if (weekly.bpDays != null) behaviour.push(`血压记录 ${weekly.bpDays} 天`)
+      if (weekly.mealDays != null) behaviour.push(`饮食记录 ${weekly.mealDays} 天`)
+      if (weekly.activityMinutes != null) behaviour.push(`活动 ${weekly.activityMinutes} 分钟`)
+      if (behaviour.length > 0) {
+        sections.push({ id: 'behavior', title: '行为记录', lines: behaviour })
+      }
+      const coverage = metabolicCoverage(goal)
+      sections.push({
+        id: 'coverage',
+        title: '记录覆盖',
+        lines: [`本周期 ${review.recordDays ?? 0} 天有记录；核心指标有数据 ${coverage.recorded}/${coverage.total} 项`],
+      })
+      return {
+        title: '就诊摘要',
+        generatedAt: '',
+        period: season.label || '',
+        sections,
+        questions: METABOLIC_VISIT_QUESTIONS.slice(),
+        text: '',
+        note: '可在下面补充你想问医生的问题；本摘要不含诊断或建议。',
+        disclaimer: METABOLIC_SUMMARY_DISCLAIMER,
+      }
+    }
+
+    /** Plain-text summary for the clipboard: records, questions, disclaimer only. */
+    function metabolicVisitText(model, extraQuestions) {
+      const extra = (extraQuestions ?? [])
+        .map((item) => String(item ?? '').trim())
+        .filter(Boolean)
+      const extraBlock = extra.length > 0
+        ? `【补充问题】\n${extra.map((item, index) => `${index + 1}. ${item}`).join('\n')}`
+        : ''
+      // The host already renders a copyable plain-text block; keep it verbatim
+      // and splice local questions in before the fixed disclaimer.
+      const base = String(model.text ?? '').trim()
+      if (base) {
+        if (!extraBlock) return base
+        const disclaimer = String(model.disclaimer ?? '').trim()
+        const index = disclaimer ? base.lastIndexOf(disclaimer) : -1
+        if (index > 0) {
+          return `${base.slice(0, index).trimEnd()}\n\n${extraBlock}\n\n${base.slice(index)}`
+        }
+        return `${base}\n\n${extraBlock}`
+      }
+
+      const blocks = []
+      blocks.push(model.generatedAt
+        ? `${model.title}（生成于 ${model.generatedAt}）`
+        : model.title)
+      if (model.period) blocks.push(model.period)
+      for (const section of model.sections ?? []) {
+        if (!section?.lines || section.lines.length === 0) continue
+        blocks.push(`【${section.title}】\n${section.lines.map((line) => `· ${line}`).join('\n')}`)
+      }
+      const questions = [...(model.questions ?? []), ...extra]
+      if (questions.length > 0) {
+        blocks.push(`【想问医生】\n${questions.map((item, index) => `${index + 1}. ${item}`).join('\n')}`)
+      }
+      if (model.disclaimer) blocks.push(model.disclaimer)
+      return blocks.filter(Boolean).join('\n\n')
+    }
+
+    /** Weekly report in the metabolic dialect: accounts + lab status, no photos. */
+    function metabolicWeeklyText({ memberName, goal, accounts, weekly, labs }) {
+      const season = metabolicSeasonMeta(goal)
+      const lines = ['代谢对账簿 · 本周对账单']
+      if (memberName) lines.push(`成员：${memberName}`)
+      if (season.label) lines.push(season.label)
+      if (weekly.start || weekly.end) {
+        lines.push(`近 7 天：${weekly.start ?? '—'} 至 ${weekly.end ?? '—'}`)
+      }
+      lines.push(`已存入：${weekly.deposits}/${weekly.max} 格`)
+      for (const account of accounts ?? []) {
+        const week = account?.week ?? {}
+        const label = week.label ?? `${week.met ?? 0}/${week.max ?? 7} 天`
+        lines.push(`${account?.name ?? account?.metric ?? '账户'}：${label}`)
+      }
+      lines.push(`化验：${labs?.hasCycleLab ? `本周期已录 ${labs.cycleCount || 1} 次` : '本周期待录入'}`
+        + (labs?.latestAt ? ` · 最近 ${localDateOf(labs.latestAt)}` : ''))
+      lines.push('说明：以上只是行为与记录统计，不评定身体好坏；参考区间非医学标准，不构成诊断、治疗或用药建议。')
+      return lines.join('\n')
+    }
+
+    function readVisitQuestions(memberId) {
+      if (!memberId) return []
+      const stored = readLocalJSON(METABOLIC_QUESTIONS_KEY + memberId, null)
+      return Array.isArray(stored) ? stored.filter((item) => typeof item === 'string') : []
+    }
+
+    function writeVisitQuestions(memberId, list) {
+      if (!memberId) return
+      const clean = (Array.isArray(list) ? list : [])
+        .map((item) => String(item ?? '').trim())
+        .filter(Boolean)
+      writeLocalJSON(METABOLIC_QUESTIONS_KEY + memberId, clean.length > 0 ? clean : null)
     }
 
     /** File -> ImageBitmap/Image, honouring EXIF orientation when supported. */
@@ -2259,12 +3454,21 @@ window.__ModuleLoader__.load({
         writeSelectedMember(preferred.id)
       }, [data, selectedId])
 
+      // The top-level diet tab was removed; normalize a stale selection (for
+      // example from an HMR-preserved state) instead of rendering a blank body.
+      useEffect(() => {
+        if (tab === 'diet') setTab('overview')
+      }, [tab])
+
       const run = useCallback(async (action, args) => {
         setBusy(true)
         try {
           const result = await postAction(action, args)
           if (!result.ok) return result
           await load()
+          // The floating avatar refreshes its "today" badge and reminder copy
+          // after a panel mutation without polling the full overview again.
+          try { window.dispatchEvent(new Event('dsh-health:changed')) } catch { /* ignore */ }
           return result
         } finally {
           setBusy(false)
@@ -2328,6 +3532,7 @@ window.__ModuleLoader__.load({
             modal, data, catalogs, busy, run, onClose: () => setModal(null),
             onOpenMember: (target) => setModal({ kind: 'member', member: target ?? null }),
             onToast: showToast,
+            onNewMeal: () => setModal({ kind: 'meal' }),
             onDeleteMember: (name, cascade) => run('deleteMember', { member: name, cascade }),
           }),
         )
@@ -2386,17 +3591,53 @@ window.__ModuleLoader__.load({
       }
 
       const leanGoal = leanGoalOf(goals)
+      const metabolicGoal = metabolicGoalOf(goals)
+      const openDiet = () => setModal({ kind: 'diet' })
       const openDeposit = (account, date) => {
         // No account argument (hero CTA) -> first account, today.
         const target = account ?? leanAccounts(leanGoal)[0] ?? null
+        // 「大餐」is the diet account: open the diet manager instead of a
+        // single protein deposit, so meals/photos/totals stay in one place.
+        if (target?.metric === 'protein') {
+          openDiet()
+          return
+        }
         setModal({ kind: 'deposit', account: target, date: date ?? todayKey() })
       }
-      const openWeekly = () => setModal({ kind: 'weeklyReview' })
+      const openWeekly = () => setModal({ kind: 'weeklyReview', code: 'lean_muscle' })
+      const openMetabolicWeekly = () => setModal({ kind: 'weeklyReview', code: 'metabolic' })
       const openSeason = () => setModal({ kind: 'seasonReview' })
-      const openHandbook = () => setModal({ kind: 'handbook' })
+      const openHandbook = (code) => setModal({ kind: 'handbook', code: code ?? 'lean_muscle' })
+      const openMetabolicHandbook = () => setModal({ kind: 'handbook', code: 'metabolic' })
+      const openFamilyMonitor = (date) => setModal({
+        kind: 'familyMonitor',
+        date: typeof date === 'string' ? date : todayKey(),
+      })
+      const openLab = () => setModal({ kind: 'labEntry' })
+      const openVisitSummary = () => setModal({ kind: 'visitSummary' })
+      const openMeal = (date) => setModal({
+        kind: 'meal',
+        date: typeof date === 'string' ? date : null,
+      })
+      /**
+       * Route a ledger account (or a ledger cell) to the right entry modal:
+       * 测 -> 家庭监测, 吃 -> 记一餐, 动 / 睡 -> single-metric deposit.
+       */
+      const openAccount = (account, date) => {
+        const key = account?.code ?? ''
+        const day = date ?? todayKey()
+        if (key === 'measure') { openFamilyMonitor(day); return }
+        if (key === 'diet') { openMeal(day); return }
+        setModal({ kind: 'deposit', account, date: day })
+      }
       async function startSeason() {
         const result = await run('startSeason', { member: member.name, code: 'lean_muscle' })
         showToast(result?.ok ? '新赛季已开启，历史记录保留' : (result?.error ?? '开启赛季失败'))
+        return result
+      }
+      async function startMetabolicCycle() {
+        const result = await run('startSeason', { member: member.name, code: 'metabolic' })
+        showToast(result?.ok ? '新复查周期已开启，历史记录保留' : (result?.error ?? '开启复查周期失败'))
         return result
       }
 
@@ -2408,6 +3649,9 @@ window.__ModuleLoader__.load({
           members,
           member,
           tab,
+          tabs: tabsFor(goals),
+          leanActive: Boolean(leanActiveGoalOf(goals)),
+          metabolicActive: Boolean(metabolicActiveGoalOf(goals)),
           onTab: (next) => setTab(next),
           onSelectMember: (id) => { setSelectedId(id); setTab('overview'); writeSelectedMember(id) },
           onAddMember: () => setModal({ kind: 'member', member: null }),
@@ -2420,7 +3664,8 @@ window.__ModuleLoader__.load({
           },
           onEditProfile: () => setModal({ kind: 'member', member }),
           onManageMembers: () => setModal({ kind: 'members' }),
-          onHandbook: openHandbook,
+          onHandbook: () => openHandbook('lean_muscle'),
+          onMetabolicHandbook: openMetabolicHandbook,
           onAbout: () => setModal({ kind: 'disclaimer' }),
         }),
         h(
@@ -2438,28 +3683,68 @@ window.__ModuleLoader__.load({
             onOpenPhotosTab: openPhotosTab,
             onDeposit: openDeposit,
             onOpenWeekly: openWeekly,
+            onOpenMetabolicWeekly: openMetabolicWeekly,
             onOpenSeason: openSeason,
             onStartSeason: startSeason,
-            onOpenHandbook: openHandbook,
+            onStartMetabolicCycle: startMetabolicCycle,
+            onOpenHandbook: openMetabolicHandbook,
             onShareSeason: () => setModal({ kind: 'shareSeason' }),
             onOpenSquad: () => setModal({ kind: 'squad' }),
+            onNewMeal: () => openMeal(null),
+            onOpenDiet: openDiet,
+            onOpenAccount: openAccount,
+            onOpenLab: openLab,
+            onOpenVisitSummary: openVisitSummary,
+            onOpenSeasonTab: () => setTab('season'),
           }),
           tab === 'season' && h(PaneBoundary, { onReset: () => setTab('overview') },
-            h(SeasonPane, {
-              member,
-              data,
-              goal: leanGoal,
-              goals,
-              recent: data.recent ?? [],
-              photos,
-              onOpenSeason: openSeason,
-              onStartSeason: startSeason,
-              onOpenHandbook: openHandbook,
-              onShareSeason: () => setModal({ kind: 'shareSeason' }),
-              onOpenSquad: () => setModal({ kind: 'squad' }),
-              onOpenDeposit: openDeposit,
-              onOpenWeekly: openWeekly,
-            })),
+            leanGoal
+              ? h('div', { className: 'dshh-seasonpane' },
+                  h(SeasonPane, {
+                    member,
+                    data,
+                    goal: leanGoal,
+                    goals,
+                    recent: data.recent ?? [],
+                    photos,
+                    onOpenSeason: openSeason,
+                    onStartSeason: startSeason,
+                    onOpenHandbook: () => openHandbook('lean_muscle'),
+                    onShareSeason: () => setModal({ kind: 'shareSeason' }),
+                    onOpenSquad: () => setModal({ kind: 'squad' }),
+                    onOpenDeposit: openDeposit,
+                    onOpenWeekly: openWeekly,
+                  }),
+                  metabolicActiveGoalOf(goals) && h(MetabolicPane, {
+                    goal: metabolicGoal,
+                    onOpenVisitSummary: openVisitSummary,
+                    onOpenMetabolicWeekly: openMetabolicWeekly,
+                    onOpenHandbook: openMetabolicHandbook,
+                    onStartMetabolicCycle: startMetabolicCycle,
+                  }))
+              : metabolicActiveGoalOf(goals)
+                ? h(MetabolicPane, {
+                    goal: metabolicGoal,
+                    onOpenVisitSummary: openVisitSummary,
+                    onOpenMetabolicWeekly: openMetabolicWeekly,
+                    onOpenHandbook: openMetabolicHandbook,
+                    onStartMetabolicCycle: startMetabolicCycle,
+                  })
+                : h(SeasonPane, {
+                    member,
+                    data,
+                    goal: null,
+                    goals,
+                    recent: data.recent ?? [],
+                    photos,
+                    onOpenSeason: openSeason,
+                    onStartSeason: startSeason,
+                    onOpenHandbook: () => openHandbook('lean_muscle'),
+                    onShareSeason: () => setModal({ kind: 'shareSeason' }),
+                    onOpenSquad: () => setModal({ kind: 'squad' }),
+                    onOpenDeposit: openDeposit,
+                    onOpenWeekly: openWeekly,
+                  })),
           tab === 'discover' && h(PaneBoundary, { onReset: () => setTab('overview') },
             h(DiscoverPane, {
               onToast: showToast,
@@ -2499,6 +3784,7 @@ window.__ModuleLoader__.load({
           onOpenGoal: (goal) => setModal({ kind: 'goal', existing: goal ?? null, code: null }),
           onNewGoal: () => setModal({ kind: 'goal', existing: null, code: null }),
           onToast: showToast,
+          onNewMeal: () => setModal({ kind: 'meal' }),
           onDeleteMember: deleteMember,
         }),
       )
@@ -2506,10 +3792,25 @@ window.__ModuleLoader__.load({
 
     // ---------------------------------------------------------------- top bar
 
+    /** Member height caption: "175 cm" / "175.5 cm" / "身高未填". */
+    function memberHeightText(member) {
+      const value = member?.height
+      if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return '身高未填'
+      return `${fmtNumber(value, 1)} cm`
+    }
+
+    /** Risk caption: "未评估" is a first-class state, not a low-risk label. */
+    function memberRiskText(member) {
+      if (!member) return '未评估'
+      if (member.riskCode === 'unknown' || member.riskLevel === 'unknown') return '未评估'
+      return member.riskLevel ?? '未评估'
+    }
+
     function TopBar(props) {
       const { members, member, tab, onTab, onSelectMember, onAddMember } = props
       const [menuOpen, setMenuOpen] = useState(false)
       const pills = members.length <= 4
+      const tabs = Array.isArray(props.tabs) && props.tabs.length > 0 ? props.tabs : TABS
 
       const menuItem = (label, onClick) => h('button', {
         key: label, type: 'button', role: 'menuitem', className: 'dshh-menu-item',
@@ -2525,9 +3826,10 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dshh-brand' },
             h('div', { className: 'dshh-brandline' },
               h('h1', { className: 'dshh-title' }, '健康管理'),
-              h('span', { className: 'dshh-preview-tag' }, '1.3')),
+              h('span', { className: 'dshh-preview-tag' }, '1.3 预览')),
             h('div', { className: 'dshh-sub' },
-              `${member.name} · ${member.relation} · ${member.sex} · ${member.riskLevel}`),
+              `${member.name} · ${member.relation} · ${member.sex} · `
+              + `${memberHeightText(member)} · ${memberRiskText(member)}`),
           ),
           h(
             'div',
@@ -2546,7 +3848,10 @@ window.__ModuleLoader__.load({
               h('div', { className: 'dshh-menu', role: 'menu' },
                 menuItem('编辑资料', props.onEditProfile),
                 menuItem('管理成员', props.onManageMembers),
-                props.onHandbook && menuItem('薄肌手册', props.onHandbook),
+                props.metabolicActive && props.onMetabolicHandbook
+                  && menuItem('代谢手册', props.onMetabolicHandbook),
+                (!props.metabolicActive || props.leanActive) && props.onHandbook
+                  && menuItem('薄肌手册', props.onHandbook),
                 menuItem('关于 / 免责声明', props.onAbout),
               ),
             ),
@@ -2573,7 +3878,7 @@ window.__ModuleLoader__.load({
           h('button', { type: 'button', className: 'dshh-memadd', 'aria-label': '添加成员',
             onClick: onAddMember }, '＋'),
         ),
-        h('nav', { className: 'dshh-tabbar', role: 'tablist' }, TABS.map((item) =>
+        h('nav', { className: 'dshh-tabbar', role: 'tablist' }, tabs.map((item) =>
           h('button', {
             key: item.code, type: 'button', role: 'tab', className: 'dshh-tabbtn',
             'data-active': String(tab === item.code),
@@ -2585,7 +3890,18 @@ window.__ModuleLoader__.load({
 
     // ---------------------------------------------------------------- goal cards
 
-    function goalTargetStatusText(target) {
+    function goalTargetStatusText(target, goalCode) {
+      // Metabolic rows are a statement, not a score: keep the neutral reference
+      // language even inside the generic goal card.
+      if (goalCode === 'metabolic') {
+        if (target.kind === 'observe' || target.status === 'observe') return '参考 · 观察'
+        if (target.status === 'normal') return '参考内'
+        if (target.status === 'high') return '高于参考'
+        if (target.status === 'low') return target.kind === 'weeklyDays' ? '记录中' : '低于参考'
+        if (target.status === 'pending') return '待补体重'
+        if (target.status === 'trend') return '观察'
+        return '暂无数据'
+      }
       if (target.kind === 'observe' || target.status === 'observe') return '参考 · 观察'
       if (target.status === 'normal') return '达标'
       if (target.status === 'high') return '偏高'
@@ -2657,7 +3973,9 @@ window.__ModuleLoader__.load({
             ? [
                 h('span', { key: 'met' }, hasAccountData
                   ? `今日存入 ${accountMet}/${accounts.length}`
-                  : `达标 ${coverage.met ?? 0}/${coverage.evaluable ?? 0}`),
+                  : goal.code === 'metabolic'
+                    ? `已记录 ${coverage.measured ?? 0}/${coverage.evaluable ?? 0}`
+                    : `达标 ${coverage.met ?? 0}/${coverage.evaluable ?? 0}`),
                 h('span', { key: 'measured' }, `已测 ${coverage.measured ?? 0}/${coverage.evaluable ?? 0}`),
               ]
             : h('span', null, `暂无数据 · 目标 ${coverage.evaluable ?? 0} 项`),
@@ -2673,7 +3991,7 @@ window.__ModuleLoader__.load({
             h('span', { className: 'dshh-trow-target' }, goalTargetRightText(target)),
             h('span', { className: 'dshh-trow-status', 'data-status': target.status },
               h('span', { className: 'dshh-dot', 'data-status': target.status, 'aria-hidden': true }),
-              goalTargetStatusText(target)),
+              goalTargetStatusText(target, goal.code)),
           ))),
         open && dimensions.length > 0 && h('div', { className: 'dshh-dims' }, dimensions.map((dimension) =>
           h('div', { key: dimension.code, className: 'dshh-dim' },
@@ -2809,7 +4127,7 @@ window.__ModuleLoader__.load({
       // Legacy hosts without a season payload keep the old CUT hero numbers.
       const stats = season.hasSeason
         ? [
-            { key: 'deposits', value: `${deposits}/${capacity}`, label: '本周存入 · 笔' },
+            { key: 'deposits', value: `${deposits}/${capacity}`, unit: '笔', label: '本周存入' },
             { key: 'streak', value: String(streak), unit: '天', label: '连续记录' },
             { key: 'season', value: `${season.week}/${season.weeks}`, unit: '周', label: '赛季' },
           ]
@@ -2903,15 +4221,19 @@ window.__ModuleLoader__.load({
       )
     }
 
-    /** Metabolic hero: unchanged from the previous dashboard. */
-    function MetabolicHero({ goals, onRecord, onManageGoal }) {
+    /**
+     * Legacy metabolic hero (pre-v4 payload). Kept as the degraded surface for
+     * a host that has not returned `season` + `accounts` + `metabolic` yet; it
+     * must never render a blank page.
+     */
+    function LegacyMetabolicHero({ goals, onRecord, onManageGoal }) {
       const activeGoals = (goals ?? []).filter((goal) => goal.status === 'active')
       const metabolicGoal = activeGoals.find((goal) => goal.code === 'metabolic') ?? null
       const goal = metabolicGoal ?? activeGoals[0] ?? null
       if (!goal) return null
       const coverage = goal.coverage ?? {}
       const stats = [
-        { key: 'met', value: `${coverage.met ?? 0}/${coverage.evaluable ?? 0}`, label: '达标' },
+        { key: 'met', value: `${coverage.met ?? 0}/${coverage.evaluable ?? 0}`, label: '已记录' },
         { key: 'measured', value: `${coverage.measured ?? 0}/${coverage.evaluable ?? 0}`, label: '已测' },
         { key: 'last', value: coverage.lastRecordAt ? fmtTime(coverage.lastRecordAt) : '—', label: '最近记录' },
       ]
@@ -2946,17 +4268,185 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * Hero dispatcher: lean-muscle members get the account hero, everyone else
-     * keeps the metabolic dashboard exactly as before.
+     * v4 metabolic hero: coverage-driven numbers (deposits / days to review /
+     * core coverage), a 12-week progress bar and three account actions. No
+     * physique photo, no body-art, no pass/fail framing.
+     */
+    function MetabolicHero({
+      goal, onOpenAccount, onOpenMetabolicWeekly, onOpenVisitSummary, onStartMetabolicCycle,
+    }) {
+      const season = metabolicSeasonMeta(goal)
+      const weekly = metabolicWeekly(goal)
+      const accounts = metabolicAccounts(goal)
+      const coverage = metabolicCoverage(goal)
+      const labs = metabolicLabs(goal)
+      const [confirmStart, setConfirmStart] = useState(false)
+      const ended = Boolean(season.ended)
+      const firstEmpty = accounts.find((account) => !account?.today?.met) ?? accounts[0] ?? null
+      const progress = season.hasSeason
+        ? Math.max(0, Math.min(100, Math.round(season.progress * 100)))
+        : 0
+      const stats = season.hasSeason
+        ? [
+            { key: 'deposits', value: `${weekly.deposits}/${weekly.max}`, unit: '格', label: '本周存入' },
+            { key: 'left', value: ended ? '0' : String(season.daysLeft ?? '—'),
+              unit: ended ? '天' : '天', label: ended ? '距复查 · 周期已结束' : '距复查' },
+            { key: 'core', value: `${coverage.recorded}/${coverage.total}`, unit: '项', label: '核心有数据' },
+          ]
+        : [
+            { key: 'deposits', value: `${weekly.deposits}/${weekly.max}`, unit: '格', label: '本周存入' },
+            { key: 'core', value: `${coverage.recorded}/${coverage.total}`, unit: '项', label: '核心有数据' },
+            { key: 'last', value: goal?.coverage?.lastRecordAt
+              ? fmtTime(goal.coverage.lastRecordAt) : '—', label: '最近记录' },
+          ]
+      const reviewHint = season.hasSeason && !ended
+        && typeof season.daysLeft === 'number' && season.daysLeft <= 7
+        ? '复查前 7 天：早晚各 1 次 × 2–3 遍，连续 7 天，弃首日取后 6 天均值。'
+        : '周期只提供节奏，不承诺任何指标变化；复查时间与项目以医生安排为准。'
+
+      async function startCycle() {
+        setConfirmStart(false)
+        await onStartMetabolicCycle?.()
+      }
+
+      return h(
+        'section',
+        { className: 'dshh-hero', 'data-variant': 'metabolic',
+          style: { '--cut-accent': CUT_ACCENT, '--cut-hot': CUT_HOT } },
+        h('div', { className: 'dshh-hero-scrim' }),
+        h('div', { className: 'dshh-hero-top' },
+          h('span', { className: 'dshh-hero-badge' }, h('span', null, 'METABOLIC LEDGER')),
+          h('span', { className: 'dshh-hero-status' },
+            `${goal?.statusName ?? GOAL_STATUS_LABEL[goal?.status] ?? goal?.status ?? '进行中'}`
+            + (goal?.domainName ? ` · ${goal.domainName}` : '')),
+        ),
+        h('h2', { className: 'dshh-hero-title' }, '代谢对账簿'),
+        h('div', { className: 'dshh-hero-sub' },
+          season.hasSeason
+            ? `${season.label || `第 ${season.no} 个复查周期`} · 覆盖度驱动，不看单次`
+            : '把测、吃、动、睡存进四个账户，12 周一次复查'),
+        h('div', { className: 'dshh-hero-stats' }, stats.map((stat) =>
+          h('div', { key: stat.key, className: 'dshh-hero-stat' },
+            h('span', { className: 'dshh-hero-num' }, stat.value,
+              stat.unit && h('small', null, stat.unit)),
+            h('span', { className: 'dshh-hero-label' }, stat.label)))),
+        season.hasSeason && h('div', { className: 'dshh-seasonbar' },
+          h('div', { className: 'dshh-seasonbar-track' },
+            h('div', { className: 'dshh-seasonbar-fill',
+              style: { width: `${progress}%` } })),
+          h('div', { className: 'dshh-seasonbar-ticks' }, season.checkpoints.map((mark, index) => {
+            const week = Number(mark?.week ?? 0)
+            const last = week >= season.weeks
+            const left = season.weeks > 0
+              ? Math.min(100, Math.max(0, (week / season.weeks) * 100))
+              : 0
+            return h('span', {
+              key: `met-cp-${mark?.week ?? index}`,
+              className: 'dshh-seasonbar-tick',
+              'data-reached': String(Boolean(mark?.reached)),
+              'data-last': String(last),
+              style: { left: `${left}%` },
+            }, mark?.label ?? `W${week}`)
+          })),
+        ),
+        h('div', { className: 'dshh-hero-cta' },
+          ended
+            ? h('button', {
+                key: 'visit', type: 'button',
+                className: 'dshh-hero-btn dshh-hero-btn-primary',
+                onClick: () => onOpenVisitSummary?.(),
+              }, '本周期结束 · 生成就诊摘要')
+            : h('button', {
+                key: 'deposit', type: 'button',
+                className: 'dshh-hero-btn dshh-hero-btn-primary',
+                onClick: () => onOpenAccount?.(firstEmpty, todayKey()),
+              }, '今日存入'),
+          !ended && h('button', {
+            key: 'visit', type: 'button',
+            className: 'dshh-hero-btn dshh-hero-btn-ghost',
+            onClick: () => onOpenVisitSummary?.(),
+          }, '就诊摘要'),
+          h('button', {
+            key: 'ledger', type: 'button',
+            className: 'dshh-hero-btn dshh-hero-btn-ghost',
+            onClick: () => onOpenMetabolicWeekly?.(),
+          }, '对账'),
+          ended && !confirmStart && h('button', {
+            key: 'restart', type: 'button',
+            className: 'dshh-hero-btn dshh-hero-btn-ghost',
+            onClick: () => setConfirmStart(true),
+          }, '开启新周期'),
+        ),
+        confirmStart && h('div', { className: 'dshh-met-heroconfirm' },
+          h('div', null,
+            `确认开启第 ${(season.no ?? 1) + 1} 个复查周期吗？只重置周期计时，`
+            + '历史记录、化验与对账单数据都会保留。'),
+          h('div', { className: 'dshh-met-inline', style: { justifyContent: 'flex-end', marginTop: 8 } },
+            h('button', { type: 'button', className: 'dshh-hero-btn dshh-hero-btn-ghost',
+              onClick: () => setConfirmStart(false) }, '再想想'),
+            h('button', { type: 'button', className: 'dshh-hero-btn dshh-hero-btn-primary',
+              onClick: startCycle }, '确认开启'))),
+        h('div', { className: 'dshh-hero-note' }, reviewHint
+          + (labs.hasCycleLab ? '' : ' 本周期还没有化验记录。')),
+      )
+    }
+
+    /** 「代谢 / 薄肌」switch shown only when both goals are active. */
+    function HeroSwitch({ value, onChange }) {
+      return h('div', { className: 'dshh-hero-switch', role: 'group', 'aria-label': '切换账户' },
+        [
+          { code: 'metabolic', name: '代谢' },
+          { code: 'lean_muscle', name: '薄肌' },
+        ].map((item) => h('button', {
+          key: item.code, type: 'button', className: 'dshh-hero-switch-btn',
+          'data-active': String(value === item.code),
+          'aria-pressed': String(value === item.code),
+          onClick: () => onChange(item.code),
+        }, item.name)))
+    }
+
+    /** Dual-goal members: both heroes exist, metabolic is the default view. */
+    function DualHero(props) {
+      // The switch is controlled by OverviewPane so the hero and the dashboard
+      // below it always show the same goal (a switch that only changed the hero
+      // would leave a metabolic deposit card under a lean hero).
+      const [localKind, setLocalKind] = useState('metabolic')
+      const kind = props.dashboardGoal === 'lean_muscle' || props.dashboardGoal === 'metabolic'
+        ? props.dashboardGoal
+        : localKind
+      const leanGoal = leanActiveGoalOf(props.goals)
+      const metabolicGoal = metabolicActiveGoalOf(props.goals)
+      const change = (next) => {
+        setLocalKind(next)
+        props.onDashboardGoalChange?.(next)
+      }
+      return h('div', { className: 'dshh-hero-dual' },
+        h(HeroSwitch, { value: kind, onChange: change }),
+        kind === 'metabolic'
+          ? h(MetabolicHero, { ...props, goal: metabolicGoal })
+          : leanGoal && h(LeanHero, { ...props, goal: leanGoal }))
+    }
+
+    /**
+     * Hero dispatcher:
+     * - both goals active -> switchable hero, metabolic by default;
+     * - metabolic only     -> v4 ledger hero (or the legacy hero on old payloads);
+     * - lean only          -> the existing lean hero, unchanged.
      */
     function CutHero(props) {
       const leanGoal = leanActiveGoalOf(props.goals)
+      const metabolicGoal = metabolicActiveGoalOf(props.goals)
+      if (leanGoal && metabolicGoal) return h(DualHero, props)
+      if (metabolicGoal) {
+        if (!metabolicLedgerReady(metabolicGoal)) return h(LegacyMetabolicHero, props)
+        return h(MetabolicHero, { ...props, goal: metabolicGoal })
+      }
       if (leanGoal) return h(LeanHero, { ...props, goal: leanGoal })
-      return h(MetabolicHero, props)
+      return h(LegacyMetabolicHero, props)
     }
 
     /** One-line coach bar: factual, behaviour-only, easily muted. */
-    function CoachTone({ mode, line, onMode, onNext, showIntro, onDismissIntro, hidden }) {
+    function CoachTone({ mode, line, onMode, onNext, showIntro, onDismissIntro, hidden, intro }) {
       if (hidden) return null
       const seg = h('div', { className: 'dshh-tone-seg', role: 'group', 'aria-label': '教练语气' },
         TONE_MODES.map((item) => h('button', {
@@ -2985,7 +4475,7 @@ window.__ModuleLoader__.load({
           seg,
         ),
         showIntro && h('div', { className: 'dshh-tone-intro' },
-          h('span', null, '硬核模式只针对行动（练 / 蛋白 / 睡 / 水 / 照片），不评价你的身体；不适可切温和或关闭。'),
+          h('span', null, intro ?? '硬核模式只针对行动（练 / 大餐 / 睡 / 水 / 照片），不评价你的身体；不适可切温和或关闭。'),
           h('button', { type: 'button', className: 'dshh-btn-ghost dshh-small',
             onClick: onDismissIntro }, '知道了')),
       )
@@ -3010,7 +4500,7 @@ window.__ModuleLoader__.load({
           h('div', null,
             h('span', { className: 'dshh-cardtitle' }, '今日存入'),
             h('div', { className: 'dshh-muted dshh-small' },
-              '只给行为计分：大练 / 蛋白 / 大睡 / 大水。体成分只观察，不在这里打分。')),
+              '只给行为计分：大练 / 大餐 / 大睡 / 大水。体成分只观察，不在这里打分。')),
           h('span', { className: 'dshh-muted dshh-small', style: { fontVariantNumeric: 'tabular-nums' } },
             `已存入 ${done}/${accounts.length} 笔`),
         ),
@@ -3116,9 +4606,25 @@ window.__ModuleLoader__.load({
     }
 
     /** Body-composition statement: observe only, never scored. */
-    function BodyStatement({ goal, onMetric }) {
+    function BodyStatement({ goal, onMetric, latest, series }) {
       const targets = observeTargets(goal)
-      if (targets.length === 0) return null
+      // BMI may arrive as a latest metric or only inside the trend series.
+      const bmiLatest = (latest ?? []).find((item) => item && item.code === 'bmi') ?? null
+      const bmiSeries = series?.bmi ?? null
+      const bmiPoint = (bmiSeries?.points ?? []).slice(-1)[0] ?? null
+      const bmi = bmiLatest ?? (bmiPoint
+        ? {
+            code: 'bmi',
+            name: bmiSeries?.name ?? 'BMI',
+            unit: bmiSeries?.unit ?? '',
+            display: fmtNumber(bmiPoint.value, 1),
+            measuredAt: bmiPoint.at ?? null,
+          }
+        : null)
+      // BMI is derived from member height + weight: show it as an extra observed
+      // row when the body-composition targets do not already include it.
+      const showBmi = Boolean(bmi) && !targets.some((target) => target?.metric === 'bmi')
+      if (targets.length === 0 && !showBmi) return null
       return h('section', { className: 'dshh-card' },
         h('div', { className: 'dshh-cardhead' },
           h('div', null,
@@ -3151,9 +4657,29 @@ window.__ModuleLoader__.load({
               h('small', { className: 'dshh-observe-band', style: { display: 'block' } },
                 target.band?.label ?? target.targetDisplay ?? '只观察趋势')),
           )
-        })),
+        }), showBmi && h('button', {
+          key: 'observe-bmi',
+          type: 'button',
+          className: 'dshh-observe-row',
+          onClick: () => onMetric?.('bmi'),
+        },
+          h('span', { className: 'dshh-observe-name' },
+            'BMI',
+            h('span', { className: 'dshh-observe-tag' }, '只观察')),
+          h('span', { className: 'dshh-observe-value' },
+            `${bmi.display ?? '—'}${bmi.unit ? ` ${bmi.unit}` : ''}`,
+            h('small', null, '由身高体重计算')),
+          h('span', { className: 'dshh-observe-value' },
+            '—',
+            h('small', null, bmi.measuredAt ? `最新 ${fmtTime(bmi.measuredAt)}` : '暂无时间')),
+          h('span', null,
+            h('span', { className: 'dshh-observe-delta' }, '不评分'),
+            h('small', { className: 'dshh-observe-band', style: { display: 'block' } },
+              '人群筛查参考，非诊断')),
+        )),
         h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 10 } },
-          '参考区间来自健身 / 中国成人公开参考，非医学标准；建议固定设备与时间比较。点击一行查看该指标全部记录。'),
+          '参考区间来自健身 / 中国成人公开参考，非医学标准；建议固定设备与时间比较。点击一行查看该指标全部记录。'
+          + (showBmi ? ' BMI 由身高体重计算，只观察、不评分。' : '')),
       )
     }
 
@@ -3331,10 +4857,428 @@ window.__ModuleLoader__.load({
                 '账户记录行为，体成分只在对账单里观察。'))),
           h('ul', null,
             h('li', null, '12 周一个赛季；W4 / W8 / W12 是节奏点，不是考核。'),
-            h('li', null, '大练 / 蛋白 / 大睡 / 大水四个账户，每天每个账户最多存 1 笔；补存也算。'),
+            h('li', null, '大练 / 大餐 / 大睡 / 大水四个账户，每天每个账户最多存 1 笔；补存也算。'),
             h('li', null, '1 笔 = 一个行为账户当天存入 1 次；4 个账户 × 7 天 = 每周最多 28 笔。'),
             h('li', null, '体脂、体重、骨骼肌、腰围不计分、不排名、不做效果承诺。'),
             h('li', null, '赛季结束可开启新赛季；历史记录和照片保留。'))),
+      )
+    }
+
+    // ------------------------------------------------------------------ metabolic ledger UI
+
+    /** Today's four behaviour deposits plus the cycle's one lab event. */
+    function MetabolicDepositCard({ goal, onOpenAccount, onOpenLab }) {
+      const accounts = metabolicAccounts(goal)
+      const labs = metabolicLabs(goal)
+      const done = accounts.filter((account) => account?.today?.met).length
+      const labDone = labs.hasCycleLab
+      return h('section', { className: 'dshh-card' },
+        h('div', { className: 'dshh-cardhead' },
+          h('div', null,
+            h('span', { className: 'dshh-cardtitle' }, '今日存入'),
+            h('div', { className: 'dshh-muted dshh-small' },
+              '测 / 吃 / 动 / 睡只记行为；「查」是周期事件，不计入 28 格。')),
+          h('span', { className: 'dshh-muted dshh-small',
+            style: { fontVariantNumeric: 'tabular-nums' } },
+            `已存入 ${done}/${accounts.length} 笔`)),
+        h('div', { className: 'dshh-accountgrid dshh-met-accountgrid' },
+          accounts.map((account) => {
+            const today = account?.today ?? null
+            const met = Boolean(today?.met)
+            const hasRecord = Boolean(today?.hasRecord)
+            const valueText = today?.display != null
+              ? String(today.display)
+              : (hasRecord ? '已记录' : '未存入')
+            return h('button', {
+              key: account.code ?? account.metric,
+              type: 'button',
+              className: 'dshh-account',
+              'data-met': String(met),
+              'data-record': String(hasRecord),
+              onClick: () => onOpenAccount?.(account, todayKey()),
+            },
+              h('span', { className: 'dshh-account-top' },
+                h('span', { className: 'dshh-account-name' }, account.name ?? account.metric),
+                account.role && h('span', { className: 'dshh-account-role' }, account.role)),
+              h('span', { className: 'dshh-account-target' }, account.targetDisplay ?? ''),
+              h('span', { className: 'dshh-account-value' }, valueText),
+              h('span', { className: 'dshh-account-state' },
+                h('span', { className: 'dshh-account-dot', 'aria-hidden': true }),
+                met ? '已存入' : hasRecord ? '未达下限' : '未存入'))
+          }),
+          h('button', {
+            type: 'button',
+            className: 'dshh-account dshh-met-labtile',
+            'data-met': String(labDone),
+            'data-record': String(labDone),
+            onClick: () => onOpenLab?.(),
+          },
+            h('span', { className: 'dshh-account-top' },
+              h('span', { className: 'dshh-account-name' }, '查'),
+              h('span', { className: 'dshh-account-role' }, '化验')),
+            h('span', { className: 'dshh-account-target' }, '本周期化验'),
+            h('span', { className: 'dshh-account-value' },
+              labDone ? `已录 ${labs.cycleCount || 1} 次` : '待录入'),
+            h('span', { className: 'dshh-account-state' },
+              h('span', { className: 'dshh-account-dot', 'aria-hidden': true }),
+              labDone ? '已存入' : '待录入'))),
+      )
+    }
+
+    /** Rolling 7-day ledger (7 columns x 4 account rows), click to backfill. */
+    function MetabolicLedger({ goal, onOpenAccount, onOpenMetabolicWeekly }) {
+      const accounts = metabolicAccounts(goal)
+      const weekly = metabolicWeekly(goal)
+      const columns = leanWeekColumns(accounts)
+      const range = weekly.start && weekly.end
+        ? `近 7 天（${fmtDay(weekly.start)} – ${fmtDay(weekly.end)}）`
+        : '近 7 天'
+      return h('section', { className: 'dshh-card' },
+        h('div', { className: 'dshh-cardhead' },
+          h('span', { className: 'dshh-cardtitle' }, '本周对账单'),
+          h('button', { type: 'button', className: 'dshh-btn dshh-btn-sm',
+            onClick: onOpenMetabolicWeekly }, '查看周报')),
+        h('div', { className: 'dshh-ledger-summary' },
+          `${range} · 已存入 ${weekly.deposits}/${weekly.max} 格 · 断更不惩罚，补录即可`),
+        h('div', { className: 'dshh-ledger-scroll' },
+          h('div', { className: 'dshh-ledger' },
+            h('div', { className: 'dshh-ledger-head' },
+              h('span', { className: 'dshh-ledger-colhead' }, ''),
+              columns.map((day) => h('span', {
+                key: `met-col-${day.date}`,
+                className: 'dshh-ledger-colhead',
+              },
+                h('b', null, day.weekday ? `周${day.weekday}` : ''),
+                fmtDay(day.date)))),
+            accounts.map((account) => {
+              const week = account?.week ?? {}
+              const label = week.label ?? `${week.met ?? 0}/${week.target ?? week.max ?? 7} 天`
+              return h('div', { key: account.code ?? account.metric, className: 'dshh-ledger-row' },
+                h('span', { className: 'dshh-ledger-acct' },
+                  account.name ?? account.metric,
+                  h('small', null, label)),
+                columns.map((day) => {
+                  const entry = leanDayOf(account, day.date)
+                  const state = entry?.met ? 'met' : entry?.hasRecord ? 'record' : 'empty'
+                  const stateText = state === 'met' ? '已存入'
+                    : state === 'record' ? '未达下限' : '无记录'
+                  return h('button', {
+                    key: `met-cell-${account.code ?? account.metric}-${day.date}`,
+                    type: 'button',
+                    className: 'dshh-ledger-cell',
+                    'data-state': state,
+                    title: `${account.name ?? ''} ${day.date} ${stateText}`,
+                    'aria-label': `${account.name ?? ''} ${day.date} ${stateText}`,
+                    onClick: () => onOpenAccount?.(account, day.date),
+                  })
+                }))
+            }),
+          )),
+        h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 10 } },
+          '实心 = 已存入 · 空心 = 有记录未达下限 · 更浅 = 无记录；点击格子可补录当天。'),
+      )
+    }
+
+    /** One neutral statement row; statuses never use pass/fail colours. */
+    function metabolicRowNode(row, onMetric, keyPrefix) {
+      // Some host displays already embed the unit (e.g. 体重 / BMI).
+      const unit = row.unit && row.valueText != null && !String(row.valueText).includes(row.unit)
+        ? (row.unit === '%' ? '%' : ` ${row.unit}`) : ''
+      const metaBits = []
+      if (row.code === 'bp') {
+        if (row.days7 != null || row.count7 != null) {
+          metaBits.push(`近 7 天 · ${row.days7 ?? '—'} 天 ${row.count7 ?? '—'} 次`)
+        }
+        if (row.morningAvg != null || row.eveningAvg != null) {
+          metaBits.push(`晨 ${row.morningAvg ?? '—'} · 晚 ${row.eveningAvg ?? '—'}`)
+        }
+        if (row.droppedFirstDay) metaBits.push('已弃首日')
+      }
+      if (row.code === 'fpg' && row.avg30 != null) {
+        metaBits.push(`近 30 天均值 ${row.avg30}`)
+      }
+      if (row.single && row.valueLabel !== '单次 · 仅参考') {
+        metaBits.push('单次 · 仅参考')
+      }
+      return h('button', {
+        key: `${keyPrefix}-${row.code}`,
+        type: 'button',
+        className: 'dshh-met-row',
+        'data-status': row.status,
+        title: row.note || undefined,
+        onClick: () => onMetric?.(row.clickCode ?? row.code),
+      },
+        h('span', { className: 'dshh-met-row-name' },
+          row.name,
+          row.role === 'core' && h('span', { className: 'dshh-met-pill' }, '核心')),
+        h('span', { className: 'dshh-met-row-value' },
+          row.valueText == null ? '暂无数据' : `${row.valueText}${unit}`,
+          row.valueText != null && h('small', null,
+            `${row.valueLabel}${row.measuredAt ? ` · ${fmtTime(row.measuredAt)}` : ''}`)),
+        h('span', { className: 'dshh-met-row-band' },
+          row.bandLabel,
+          row.note && h('small', null, row.note)),
+        h('span', { className: 'dshh-met-row-side' },
+          h('span', { className: 'dshh-met-status', 'data-status': row.status },
+            row.statusText),
+          row.delta && h('span', null,
+            [row.delta.label, row.delta.text].filter(Boolean).join(' '))),
+        metaBits.length > 0 && h('span', { className: 'dshh-met-rowmeta' },
+          metaBits.join(' · ')),
+      )
+    }
+
+    /** Indicator statement: core five + collapsible extras, observed only. */
+    function MetabolicStatement({ goal, onMetric }) {
+      const model = metabolicStatementModel(goal)
+      const coverage = metabolicCoverage(goal)
+      const sugary = metabolicSugary(goal)
+      const labs = metabolicLabs(goal)
+      const [openExtras, setOpenExtras] = useState(false)
+      const extraCount = model.extra.length + (sugary ? 1 : 0)
+      const sugaryCount = sugary?.weekCount ?? 0
+      const sugaryHasData = Boolean(sugary) && sugaryCount > 0
+      return h('section', { className: 'dshh-card' },
+        h('div', { className: 'dshh-cardhead' },
+          h('div', null,
+            h('span', { className: 'dshh-cardtitle' }, '指标对账单'),
+            h('div', { className: 'dshh-muted dshh-small' },
+              '只展示参考区间、均值与变化；不计分、不排名、不下诊断结论。')),
+          h('span', { className: 'dshh-met-coverage' },
+            `核心有数据 ${coverage.recorded}/${coverage.total} 项`)),
+        h('div', { className: 'dshh-met-rows' },
+          model.core.map((row) => metabolicRowNode(row, onMetric, 'met-core'))),
+        h('button', {
+          type: 'button',
+          className: 'dshh-btn dshh-btn-sm dshh-met-more',
+          'aria-expanded': String(openExtras),
+          onClick: () => setOpenExtras((value) => !value),
+        }, openExtras ? '收起附加项' : `附加项（${extraCount} 项）`),
+        openExtras && h('div', { className: 'dshh-met-extra' },
+          model.extra.map((row) => metabolicRowNode(row, onMetric, 'met-extra')),
+          sugary && h('button', {
+            key: 'met-sugary',
+            type: 'button',
+            className: 'dshh-met-row',
+            'data-status': 'unknown',
+            onClick: () => onMetric?.('sugary'),
+          },
+            h('span', { className: 'dshh-met-row-name' }, '含糖饮料'),
+            h('span', { className: 'dshh-met-row-value' },
+              sugaryHasData ? `近 7 天 ${sugary.weekMl ?? 0} ml` : '暂无数据',
+              sugaryHasData && h('small', null,
+                `近 7 天 ${sugaryCount} 次 · ${sugary.days7 ?? 0} 天`)),
+            h('span', { className: 'dshh-met-row-band' }, sugary.note),
+            h('span', { className: 'dshh-met-row-side' },
+              h('span', { className: 'dshh-met-status', 'data-status': 'unknown' }, '只记录')))),
+        h('div', { className: 'dshh-met-statement-note' },
+          `${model.note} `
+          + '设备差异会影响读数，建议固定设备、固定时间比较；单次偏高或偏低时可以复测，并咨询医生。'
+          + (labs.hasCycleLab ? '' : ' 本周期还没有化验记录，可从「查」录入一次化验单。')),
+      )
+    }
+
+    /** Review cycle card: progress, checkpoints, visit summary, new cycle. */
+    function MetabolicCycleCard({ goal, onOpenVisitSummary, onOpenMetabolicWeekly, onStartMetabolicCycle }) {
+      const season = metabolicSeasonMeta(goal)
+      const [confirm, setConfirm] = useState(false)
+      const checkpointText = season.checkpoints
+        .map((mark) => mark?.label ?? `W${mark?.week ?? ''}`).join(' / ')
+      const progress = Math.max(0, Math.min(100, Math.round(season.progress * 100)))
+
+      async function start() {
+        setConfirm(false)
+        await onStartMetabolicCycle?.()
+      }
+
+      return h('section', { className: 'dshh-card dshh-seasoncard' },
+        h('div', { className: 'dshh-cardhead', style: { marginBottom: 2 } },
+          h('div', null,
+            h('span', { className: 'dshh-cardtitle' }, '复查周期'),
+            h('div', { className: 'dshh-muted dshh-small' },
+              season.hasSeason
+                ? `${season.label || `第 ${season.no} 个复查周期`}`
+                  + (season.endsAt ? ` · 截止 ${season.endsAt}` : '')
+                : '服务端暂未返回复查周期；记录、周对账与就诊摘要不受影响。'))),
+        h('div', { className: 'dshh-seasonstat' },
+          `检查点 ${checkpointText} · 周期进度 ${fmtPercent(season.progress)} · `
+          + (season.ended ? '周期已结束' : `剩余 ${season.daysLeft ?? '—'} 天`)),
+        h('div', { className: 'dshh-checkpoints' }, season.checkpoints.map((mark, index) =>
+          h('span', {
+            key: `met-checkpoint-${mark?.week ?? index}`,
+            className: 'dshh-checkpoint',
+            'data-reached': String(Boolean(mark?.reached)),
+          }, `${mark?.label ?? `W${mark?.week ?? ''}`}${mark?.reached ? ' ✓' : ''}`))),
+        season.hasSeason && h('div', { className: 'dshh-seasonprogress' },
+          h('div', { className: 'dshh-seasonprogress-fill', style: { width: `${progress}%` } }),
+          h('span', { className: 'dshh-seasonprogress-label' }, `${progress}%`)),
+        h('div', { className: 'dshh-met-hint' },
+          '复查前 7 天：早晚各 1 次 × 2–3 遍；静坐 5 分钟后测，连续 7 天，弃首日取后 6 天均值；不删高值。'),
+        h('div', { className: 'dshh-quickfoot' },
+          h('button', {
+            type: 'button',
+            className: season.ended ? 'dshh-btn dshh-btn-primary' : 'dshh-btn',
+            onClick: onOpenVisitSummary,
+          }, '生成就诊摘要'),
+          h('button', { type: 'button', className: 'dshh-btn',
+            onClick: onOpenMetabolicWeekly }, '查看周报'),
+          season.ended && !confirm && h('button', {
+            type: 'button', className: 'dshh-btn dshh-btn-primary',
+            onClick: () => setConfirm(true),
+          }, '开启新周期')),
+        confirm && h('div', { className: 'dshh-note', style: { marginTop: 10 } },
+          h('div', null,
+            `确认开启第 ${(season.no ?? 1) + 1} 个复查周期吗？只重置周期计时，`
+            + '历史记录、化验与对账单数据都会保留。'),
+          h('div', { style: { display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 } },
+            h('button', { type: 'button', className: 'dshh-btn',
+              onClick: () => setConfirm(false) }, '再想想'),
+            h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+              onClick: start }, '确认开启'))),
+        h('div', { className: 'dshh-muted dshh-small' },
+          '周期只提供节奏，不承诺任何指标变化；复查时间与项目以医生安排为准。'),
+      )
+    }
+
+    /** 复查 Tab: cycle overview, account totals, behaviour stats, statement. */
+    function MetabolicPane({
+      goal, onOpenVisitSummary, onOpenMetabolicWeekly, onOpenHandbook,
+      onStartMetabolicCycle,
+    }) {
+      const [confirmStart, setConfirmStart] = useState(false)
+      if (!goal) {
+        return h('div', { className: 'dshh-seasonpane' },
+          h('section', { className: 'dshh-card dshh-season-empty' },
+            h('div', { className: 'dshh-cardtitle' }, '还没有代谢复查周期'),
+            h('div', { className: 'dshh-muted dshh-small' },
+              '先在「目标」里激活代谢管理。复查周期只提供 12 周节奏，'
+              + '不承诺指标变化，也不代表诊断；是否管理由你自己决定。'),
+          ))
+      }
+      const season = metabolicSeasonMeta(goal)
+      const review = metabolicReview(goal)
+      const weekly = metabolicWeekly(goal)
+      const accounts = metabolicAccounts(goal)
+      const coverage = metabolicCoverage(goal)
+      const labs = metabolicLabs(goal)
+      const progress = Math.max(0, Math.min(100, Math.round(season.progress * 100)))
+      const statText = (value, unit) => (value == null ? '—' : `${value}${unit ?? ''}`)
+      return h('div', { className: 'dshh-seasonpane' },
+        h('section', { className: 'dshh-seasonhero' },
+          h('div', { className: 'dshh-seasonhero-top' },
+            h('span', { className: 'dshh-season-kicker' },
+              `REVIEW ${String(season.no ?? 1).padStart(2, '0')}`),
+            h('span', { className: 'dshh-season-status' },
+              `${season.ended ? '已结束' : '进行中'} · 第 `
+              + `${Math.max(1, Math.min(season.week || 1, season.weeks))} / ${season.weeks} 周`)),
+          h('h2', { className: 'dshh-seasonhero-title' }, '把 12 周存成一次复查'),
+          h('p', { className: 'dshh-seasonhero-sub' },
+            '不比单次读数；只看有没有把测、吃、动、睡存进去。复诊时把记录带走一页纸。'),
+          h('div', { className: 'dshh-seasonhero-stats' },
+            h('div', { className: 'dshh-seasonhero-stat' },
+              h('b', null, `${weekly.deposits}/${weekly.max}`),
+              h('span', null, '本周存入 · 格')),
+            h('div', { className: 'dshh-seasonhero-stat' },
+              h('b', null, review.max ? `${review.deposits}/${review.max}` : String(review.deposits)),
+              h('span', null, '周期累计 · 格')),
+            h('div', { className: 'dshh-seasonhero-stat' },
+              h('b', null, `${coverage.recorded}/${coverage.total}`),
+              h('span', null, '核心有数据 · 项')),
+            h('div', { className: 'dshh-seasonhero-stat' },
+              h('b', null, statText(review.recordDays, ' 天')),
+              h('span', null, '记录天数'))),
+          season.hasSeason && h('div', { className: 'dshh-seasonprogress' },
+            h('div', { className: 'dshh-seasonprogress-fill', style: { width: `${progress}%` } }),
+            h('span', { className: 'dshh-seasonprogress-label' }, `${progress}%`)),
+          h('div', { className: 'dshh-seasontimeline' }, season.checkpoints.map((mark, index) => {
+            const reached = Boolean(mark?.reached)
+            const weeksAway = Math.max(0, (mark?.week ?? 0) - (season.week || 0))
+            return h('div', {
+              key: `met-mark-${mark?.week ?? index}`,
+              className: 'dshh-seasontimeline-step',
+              'data-reached': String(reached),
+            },
+              h('span', { className: 'dshh-seasontimeline-dot' }, reached ? '✓' : '·'),
+              h('b', null, mark?.label ?? `W${mark?.week ?? ''}`),
+              h('small', null, reached ? '已到达' : weeksAway > 0 ? `${weeksAway} 周后` : '本周'))
+          })),
+          h('div', { className: 'dshh-seasonhero-actions' },
+            h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+              onClick: onOpenVisitSummary }, '生成就诊摘要'),
+            h('button', { type: 'button', className: 'dshh-btn',
+              onClick: onOpenMetabolicWeekly }, '查看周报'),
+            h('button', { type: 'button', className: 'dshh-btn-ghost dshh-small',
+              onClick: onOpenHandbook }, '代谢手册'),
+            season.ended && !confirmStart && h('button', {
+              type: 'button', className: 'dshh-btn dshh-btn-primary',
+              onClick: () => setConfirmStart(true),
+            }, '开启新周期')),
+          confirmStart && h('div', { className: 'dshh-note', style: { marginTop: 12 } },
+            h('div', null,
+              `确认开启第 ${(season.no ?? 1) + 1} 个复查周期吗？只重置周期计时，`
+              + '历史记录、化验与对账单数据都会保留。'),
+            h('div', { style: { display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 } },
+              h('button', { type: 'button', className: 'dshh-btn',
+                onClick: () => setConfirmStart(false) }, '再想想'),
+              h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+                onClick: async () => { setConfirmStart(false); await onStartMetabolicCycle?.() } },
+                '确认开启')))),
+        h('section', { className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '本周期对账'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                '四账户累计存入，只记行为；指标不在这里计分。'))),
+          h('div', null, (review.byAccount ?? []).map((item, index) =>
+            h('div', { key: item?.code ?? `met-account-${index}`, className: 'dshh-review-line' },
+              h('span', null, item?.name ?? '账户'),
+              h('span', null,
+                (item?.label ? `${item.label} · ` : '')
+                + `${item?.deposits ?? 0}${item?.max ? `/${item.max}` : ''} 天`
+                + (item?.rate != null ? ` · ${fmtPercent(item.rate)}` : ''))))),
+          h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 8 } },
+            `化验：${labs.hasCycleLab ? `本周期已录 ${labs.cycleCount || 1} 次` : '本周期待录入'}`
+            + (labs.latestAt ? ` · 最近 ${localDateOf(labs.latestAt)}` : ''))),
+        h('section', { className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '行为统计'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                '本周期记录事实，只做描述性统计。'))),
+          h('div', { className: 'dshh-review-grid' },
+            h(ReviewStat, { label: '记录天数', value: statText(review.recordDays, ' 天') }),
+            h(ReviewStat, { label: '血压天数', value: statText(review.bpDays, ' 天') }),
+            h(ReviewStat, { label: '饮食天数', value: statText(review.mealDays, ' 天') }),
+            h(ReviewStat, { label: '活动分钟', value: statText(review.activityMinutes, ' min') }),
+            h(ReviewStat, { label: '睡眠均值', value: statText(review.sleepAvg, ' h') }),
+            h(ReviewStat, { label: '饮水均值', value: statText(review.waterAvg, ' ml') }),
+            h(ReviewStat, { label: '甜饮总量', value: statText(review.sugaryMl, ' ml') }),
+            h(ReviewStat, { label: '化验次数', value: statText(review.labCount, ' 次') }))),
+        h('section', { className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '核心指标基线 → 最新'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                '只陈述数值与变化，不做好转 / 恶化评价。'))),
+          (review.statement ?? []).length === 0
+            ? h('div', { className: 'dshh-muted dshh-small' },
+                '本周期还没有可对照的核心指标记录；先把家庭监测存进去。')
+            : h('div', null, review.statement.map((row, index) => {
+                const unit = row?.unit === '%' ? '%' : row?.unit ? ` ${row.unit}` : ''
+                const base = row?.baseline == null ? '暂无基线' : `${row.baseline}${unit}`
+                const latestValue = row?.latestDisplay ?? row?.latest ?? row?.currentDisplay
+                const latest = latestValue == null ? '暂无最新' : `${latestValue}${unit}`
+                const delta = row?.deltaDisplay
+                  ?? (typeof row?.delta === 'number' ? signedValue(row.delta, row.unit) : '—')
+                return h('div', { key: row?.code ?? `met-statement-${index}`,
+                  className: 'dshh-review-line' },
+                  h('span', null, `${row?.name ?? '指标'}：${base} → ${latest}`),
+                  h('span', null, `${delta} · 只陈述`))
+              })),
+          h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 8 } },
+            '血压基线取周期内第一次读数，最新取近 7 天均值，两次口径不同；'
+            + '指标变化受设备、饮食、水分、作息等影响，不构成效果承诺。')),
+        h('div', { className: 'dshh-muted dshh-small' }, METABOLIC_DISCLAIMER),
       )
     }
 
@@ -3676,7 +5620,7 @@ window.__ModuleLoader__.load({
             h('div', { className: 'dshh-consent-label' }, '会分享'),
             h('ul', null,
               h('li', null, '赛季编号 / 周次'),
-              h('li', null, '大练 / 蛋白 / 大睡 / 大水 本周存入笔数'),
+              h('li', null, '大练 / 大餐 / 大睡 / 大水 本周存入笔数'),
               h('li', null, '连续记录天数'))),
           h('div', null,
             h('div', { className: 'dshh-consent-label' }, '不会分享'),
@@ -3937,18 +5881,24 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState(null)
       const [saving, setSaving] = useState(false)
       const chips = metric === 'training' ? [30, 40, 60]
-        : metric === 'water' ? [500, 1000]
-          : metric === 'sleep' ? [7, 8]
-            : []
+        : metric === 'activity' ? [20, 30, 45]
+          : metric === 'water' ? [500, 1000]
+            : metric === 'sugary' ? [330, 500]
+              : metric === 'sleep' ? [7, 8]
+                : []
       const hint = metric === 'training'
         ? '只记录力量训练时长；近 7 天训练天数由记录自动统计。'
-        : metric === 'protein'
-          ? `参考区间：${accountInfo?.targetDisplay ?? '按体重换算'}；体重缺失时显示「待补体重」，不判定。`
-          : metric === 'sleep'
-            ? '参考 7–9 h；同日多条记录取最大值。'
-            : metric === 'water'
-              ? '参考 ≥1500 ml；同日多条记录求和。'
-              : ''
+        : metric === 'activity'
+          ? '中等强度活动（如快走、骑车），只记录，不构成运动处方；同一天多条求和。'
+          : metric === 'sugary'
+            ? '含糖饮料（如奶茶、可乐），只记录，不评价；同一天多条求和。'
+            : metric === 'protein'
+              ? `参考区间：${accountInfo?.targetDisplay ?? '按体重换算'}；体重缺失时显示「待补体重」，不判定。`
+              : metric === 'sleep'
+                ? '参考 7–9 h；同日多条记录取最大值。'
+                : metric === 'water'
+                  ? '参考 ≥1500 ml；同日多条记录求和。'
+                  : ''
 
       async function save() {
         setError(null)
@@ -4009,7 +5959,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 6 } },
             `目标：${accountInfo?.targetDisplay ?? '—'}`
             + (accountInfo?.depositLine && metric !== 'training'
-              ? ` · 存入阈值 ${accountInfo.depositLine}` : '')),
+              ? ` · 存入下限 ${accountInfo.depositLine}` : '')),
         ),
         h('div', { className: 'dshh-field' },
           h('label', { className: 'dshh-field-label' }, '日期（默认今天，可补录历史）'),
@@ -4021,16 +5971,296 @@ window.__ModuleLoader__.load({
         ),
         hint && h('div', { className: 'dshh-modal-note' }, hint),
         h('div', { className: 'dshh-modal-note' },
-          '训练 / 蛋白 / 水同日多条会求和，睡眠取最大值；本工具只记录行为，不提供动作、食谱或补剂建议。'),
+          metric === 'activity' || metric === 'sugary'
+            ? '同一天多条记录会求和；只记录行为，不评价身体或食物，也不构成运动、饮食或补剂处方。'
+            : '训练 / 大餐 / 水同日多条会求和，睡眠取最大值；本工具只记录行为，不提供动作、食谱或补剂建议。'),
         error && h('div', { className: 'dshh-error', style: { marginTop: 10 } }, error),
       )
     }
 
-    /** Weekly reconciliation report with a copyable plain-text block. */
+    /** One home-monitoring record: any of pressure / glucose / waist / weight. */
+    function FamilyMonitorModal({ member, date: initialDate, run, onClose, onToast }) {
+      const FIELDS = [
+        { code: 'sbp', name: '收缩压', unit: 'mmHg', placeholder: '如 128' },
+        { code: 'dbp', name: '舒张压', unit: 'mmHg', placeholder: '如 78' },
+        { code: 'hr', name: '心率', unit: '次/分', placeholder: '如 72' },
+        { code: 'fpg', name: '空腹血糖', unit: 'mmol/L', placeholder: '如 5.6' },
+        { code: 'ppg', name: '餐后2小时血糖', unit: 'mmol/L', placeholder: '如 7.2' },
+        { code: 'waist', name: '腰围', unit: 'cm', placeholder: '如 88' },
+        { code: 'weight', name: '体重', unit: 'kg', placeholder: '如 68.5' },
+      ]
+      const [time, setTime] = useState(() => {
+        const raw = String(initialDate ?? '')
+        return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T07:30` : toLocalInput()
+      })
+      const [context, setContext] = useState(() => {
+        const guessed = inferContext(time)
+        return METABOLIC_CONTEXTS.some((item) => item.code === guessed) ? guessed : 'random'
+      })
+      const [vals, setVals] = useState({})
+      const [error, setError] = useState(null)
+      const [saving, setSaving] = useState(false)
+
+      async function save() {
+        setError(null)
+        if (!member) { setError('请先选择一位家庭成员'); return }
+        const measuredAt = toApiTime(time)
+        if (!measuredAt) { setError('请选择日期与时间'); return }
+        const values = {}
+        for (const field of FIELDS) {
+          const raw = vals[field.code]
+          if (raw === '' || raw == null) continue
+          const value = Number(raw)
+          if (!Number.isFinite(value) || value <= 0) {
+            setError(`「${field.name}」请填写大于 0 的数字`)
+            return
+          }
+          values[field.code] = value
+        }
+        if (Object.keys(values).length === 0) {
+          setError('请至少填写一项（任填一项即可保存）')
+          return
+        }
+        setSaving(true)
+        let result
+        try {
+          result = await run('record', {
+            member: member.name,
+            measuredAt,
+            context,
+            values,
+            source: 'form',
+          })
+        } finally {
+          setSaving(false)
+        }
+        if (!result?.ok) { setError(result?.error ?? '保存失败'); return }
+        onToast?.(`已存入：${member.name} · 家庭监测 ${Object.keys(values).length} 项`)
+        onClose()
+      }
+
+      const footer = h('div', { className: 'dshh-modal-actions' },
+        h('span', { className: 'dshh-muted dshh-small', style: { marginRight: 'auto' } },
+          '任一指标即可保存'),
+        h('button', { type: 'button', className: 'dshh-btn', onClick: onClose }, '取消'),
+        h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+          onClick: save, disabled: saving }, saving ? '保存中…' : '存入家庭监测'))
+
+      return h(ModalFrame, { title: `家庭监测 · ${member?.name ?? ''}`, onClose, footer, wide: true },
+        h('div', { className: 'dshh-field-row' },
+          h('div', { className: 'dshh-field' },
+            h('label', { className: 'dshh-field-label' }, '日期时间'),
+            h('input', { className: 'dshh-input', type: 'datetime-local', value: time,
+              'aria-label': '测量时间', onChange: (e) => setTime(e.target.value) })),
+          h('div', { className: 'dshh-field' },
+            h('label', { className: 'dshh-field-label' }, '情境'),
+            h('select', { className: 'dshh-select', value: context,
+              'aria-label': '测量情境', onChange: (e) => setContext(e.target.value) },
+              METABOLIC_CONTEXTS.map((item) =>
+                h('option', { key: item.code, value: item.code }, item.name))))),
+        h('div', { className: 'dshh-met-fieldgrid' }, FIELDS.map((field) =>
+          h('div', { key: field.code, className: 'dshh-met-fieldcell' },
+            h('span', { className: 'dshh-field-label' }, field.name),
+            h('div', { className: 'dshh-qwrap' },
+              h('input', {
+                className: 'dshh-input',
+                type: 'text',
+                inputMode: 'decimal',
+                autoComplete: 'off',
+                placeholder: field.placeholder,
+                'aria-label': field.name,
+                value: vals[field.code] ?? '',
+                onChange: (e) => setVals({ ...vals, [field.code]: e.target.value }),
+              }),
+              h('span', { className: 'dshh-unit' }, field.unit))))),
+        h('div', { className: 'dshh-modal-note' },
+          '测量要点：静坐 5 分钟后测；坐位，上臂与心脏同高，袖带下缘距肘窝 2–3 cm；'
+          + '每次测 2–3 遍、间隔 1–2 分钟；早晚各 1 次；复查前连续 7 天，弃首日取后 6 天均值；不删高值。'),
+        h('div', { className: 'dshh-modal-note' },
+          '单次读数只做参考，这里不做正常 / 异常判断，也不弹提醒；'
+          + '同一天多条记录会分别保存在时间线上。'),
+        error && h('div', { className: 'dshh-error', style: { marginTop: 10 } }, error),
+      )
+    }
+
+    /** One lab report -> one `context=lab` record with any of its values. */
+    function LabEntryModal({ member, run, onClose, onToast }) {
+      const FIELDS = [
+        { code: 'fpg', name: '空腹血糖', unit: 'mmol/L', placeholder: '如 5.6' },
+        { code: 'ppg', name: '餐后2小时血糖', unit: 'mmol/L', placeholder: '如 7.2' },
+        { code: 'hba1c', name: '糖化血红蛋白', unit: '%', placeholder: '如 5.8' },
+        { code: 'tc', name: '总胆固醇', unit: 'mmol/L', placeholder: '如 4.8' },
+        { code: 'tg', name: '甘油三酯', unit: 'mmol/L', placeholder: '如 1.5' },
+        { code: 'ldl', name: '低密度脂蛋白胆固醇', unit: 'mmol/L', placeholder: '如 2.9' },
+        { code: 'hdl', name: '高密度脂蛋白胆固醇', unit: 'mmol/L', placeholder: '如 1.2' },
+        { code: 'ua', name: '尿酸', unit: 'μmol/L', placeholder: '如 380' },
+      ]
+      const [date, setDate] = useState(() => todayKey())
+      const [vals, setVals] = useState({})
+      const [error, setError] = useState(null)
+      const [saving, setSaving] = useState(false)
+
+      async function save() {
+        setError(null)
+        if (!member) { setError('请先选择一位家庭成员'); return }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setError('请选择化验日期'); return }
+        const values = {}
+        for (const field of FIELDS) {
+          const raw = vals[field.code]
+          if (raw === '' || raw == null) continue
+          const value = Number(raw)
+          if (!Number.isFinite(value) || value <= 0) {
+            setError(`「${field.name}」请填写报告上的数值（大于 0）`)
+            return
+          }
+          values[field.code] = value
+        }
+        if (Object.keys(values).length === 0) {
+          setError('请至少填写一项（任填一项即可保存）')
+          return
+        }
+        setSaving(true)
+        let result
+        try {
+          result = await run('record', {
+            member: member.name,
+            measuredAt: date,
+            context: 'lab',
+            values,
+            source: 'form',
+            note: '化验单录入',
+          })
+        } finally {
+          setSaving(false)
+        }
+        if (!result?.ok) { setError(result?.error ?? '保存失败'); return }
+        onToast?.(`已录入化验：${member.name} · ${Object.keys(values).length} 项`)
+        onClose()
+      }
+
+      const footer = h('div', { className: 'dshh-modal-actions' },
+        h('span', { className: 'dshh-muted dshh-small', style: { marginRight: 'auto' } },
+          '同日多项合并为一条记录'),
+        h('button', { type: 'button', className: 'dshh-btn', onClick: onClose }, '取消'),
+        h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+          onClick: save, disabled: saving }, saving ? '保存中…' : '保存化验'))
+
+      return h(ModalFrame, { title: `化验单录入 · ${member?.name ?? ''}`, onClose, footer, wide: true },
+        h('div', { className: 'dshh-field', style: { maxWidth: 240 } },
+          h('label', { className: 'dshh-field-label' }, '化验日期'),
+          h('input', { className: 'dshh-input', type: 'date', value: date, max: todayKey(),
+            'aria-label': '化验日期', onChange: (e) => setDate(e.target.value) })),
+        h('div', { className: 'dshh-met-fieldgrid' }, FIELDS.map((field) =>
+          h('div', { key: field.code, className: 'dshh-met-fieldcell' },
+            h('span', { className: 'dshh-field-label' }, field.name),
+            h('div', { className: 'dshh-qwrap' },
+              h('input', {
+                className: 'dshh-input',
+                type: 'text',
+                inputMode: 'decimal',
+                autoComplete: 'off',
+                placeholder: field.placeholder,
+                'aria-label': field.name,
+                value: vals[field.code] ?? '',
+                onChange: (e) => setVals({ ...vals, [field.code]: e.target.value }),
+              }),
+              h('span', { className: 'dshh-unit' }, field.unit))))),
+        h('div', { className: 'dshh-modal-note' },
+          '只录入报告上的数值；参考区间由产品展示，不在这里解读报告。'
+          + '建议同时把报告图片归档到「档案 → 检验报告」，方便复诊时核对。'),
+        h('div', { className: 'dshh-modal-note' },
+          '一次保存为一条「检验」记录，不计入每周 28 格；是否复查、查哪些项目以医生安排为准。'),
+        error && h('div', { className: 'dshh-error', style: { marginTop: 10 } }, error),
+      )
+    }
+
+    /** Visit summary: sections + fixed questions + local additions + copy. */
+    function VisitSummaryModal({ member, goal, onClose, onToast }) {
+      const model = metabolicVisitModel(goal)
+      const [extra, setExtra] = useState(() => readVisitQuestions(member?.id))
+      const [draft, setDraft] = useState('')
+      const text = metabolicVisitText(model, extra)
+
+      function addQuestion() {
+        const value = String(draft ?? '').trim()
+        if (!value) return
+        const next = [...extra, value]
+        setExtra(next)
+        writeVisitQuestions(member?.id, next)
+        setDraft('')
+      }
+
+      function removeQuestion(index) {
+        const next = extra.filter((_, itemIndex) => itemIndex !== index)
+        setExtra(next)
+        writeVisitQuestions(member?.id, next)
+      }
+
+      async function copy() {
+        const ok = await leanCopyText(text)
+        onToast?.(ok ? '就诊摘要已复制为纯文本' : '复制失败，可手动选择文本')
+      }
+
+      return h(ModalFrame, { title: model.title, onClose, wide: true },
+        (model.generatedAt || model.period) && h('div', { className: 'dshh-muted dshh-small' },
+          [model.generatedAt ? `生成于 ${model.generatedAt}` : null, model.period]
+            .filter(Boolean).join(' · ')),
+        (model.sections ?? []).length === 0
+          ? h('div', { className: 'dshh-empty', style: { padding: '16px' } },
+              '本周期还没有可汇总的记录。')
+          : h('div', null, model.sections.map((section, index) =>
+              h('div', { key: section.id ?? `visit-section-${index}`,
+                className: 'dshh-met-visit-section' },
+                h('div', { className: 'dshh-met-visit-title' }, section.title),
+                h('ul', { className: 'dshh-met-visit-lines' },
+                  section.lines.map((line, lineIndex) =>
+                    h('li', { key: `visit-line-${index}-${lineIndex}` }, line)))))),
+        h('div', { className: 'dshh-met-visit-section' },
+          h('div', { className: 'dshh-met-visit-title' }, '想问医生'),
+          h('div', { className: 'dshh-met-qlist' }, (model.questions ?? []).map((question, index) =>
+            h('div', { key: `visit-q-${index}`, className: 'dshh-met-qrow' },
+              `${index + 1}. ${question}`))),
+          extra.length > 0 && h('div', { className: 'dshh-met-qlist' },
+            extra.map((question, index) =>
+              h('div', { key: `visit-extra-${index}`, className: 'dshh-met-qrow' },
+                h('span', null, `补充 ${index + 1}. ${question}`),
+                h('button', { type: 'button', className: 'dshh-btn-ghost dshh-small',
+                  onClick: () => removeQuestion(index) }, '移除')))),
+          h('div', { className: 'dshh-met-inline' },
+            h('input', {
+              className: 'dshh-input',
+              style: { flex: 1, minWidth: 180 },
+              placeholder: '补充一个想问医生的问题',
+              value: draft,
+              onChange: (e) => setDraft(e.target.value),
+              onKeyDown: (e) => { if (e.key === 'Enter') { e.preventDefault(); addQuestion() } },
+            }),
+            h('button', { type: 'button', className: 'dshh-btn dshh-btn-sm',
+              onClick: addQuestion }, '＋ 添加')),
+          h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 6 } },
+            `${model.note} 补充问题只保存在本机，不上传、不入库。`)),
+        h('div', { className: 'dshh-review-sub' }, '可复制纯文本'),
+        h('div', { className: 'dshh-copybox', style: { maxHeight: 240 } }, text),
+        h('div', { className: 'dshh-modal-note' }, model.disclaimer),
+        h('div', { className: 'dshh-modal-actions' },
+          h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+            onClick: copy }, '复制摘要'),
+          h('button', { type: 'button', className: 'dshh-btn', onClick: onClose }, '关闭')),
+      )
+    }
+
+    /**
+     * Weekly reconciliation report with a copyable plain-text block.
+     * Two dialects: lean-muscle (photos) and metabolic (labs, no photos).
+     */
     function WeeklyReviewModal({ member, goal, onClose, onToast }) {
-      const accounts = leanAccounts(goal)
-      const totals = leanWeeklyTotals(goal, accounts)
-      const text = weeklyReviewText({ memberName: member?.name, goal, accounts, totals })
+      const metabolic = goal?.code === 'metabolic'
+      const accounts = metabolic ? metabolicAccounts(goal) : leanAccounts(goal)
+      const totals = metabolic ? metabolicWeekly(goal) : leanWeeklyTotals(goal, accounts)
+      const labs = metabolic ? metabolicLabs(goal) : null
+      const text = metabolic
+        ? metabolicWeeklyText({ memberName: member?.name, goal, accounts, weekly: totals, labs })
+        : weeklyReviewText({ memberName: member?.name, goal, accounts, totals })
       const rate = totals.max > 0 ? totals.deposits / totals.max : null
 
       async function copy() {
@@ -4038,16 +6268,32 @@ window.__ModuleLoader__.load({
         onToast?.(ok ? '周报已复制为纯文本' : '复制失败，可手动选择文本')
       }
 
-      return h(ModalFrame, { title: '本周对账单', onClose, wide: true },
+      const unit = metabolic ? '格' : '笔'
+      const behaviourLine = metabolic
+        ? `近 7 天你存入了 ${totals.deposits}/${totals.max} 格，有记录 ${totals.recordDays ?? 0} 天；`
+          + `化验：${labs?.hasCycleLab ? `本周期已录 ${labs.cycleCount || 1} 次` : '本周期待录入'}。`
+        : `近 7 天你存入了 ${totals.deposits}/${totals.max} 笔，照片覆盖 ${totals.photoDays} 天，`
+          + `有记录 ${totals.recordDays} 天。`
+
+      return h(ModalFrame, { title: metabolic ? '本周对账单 · 代谢' : '本周对账单',
+        onClose, wide: true },
         h('div', { className: 'dshh-review-grid' },
-          h(ReviewStat, { label: '已存入', value: `${totals.deposits}/${totals.max} 笔` }),
+          h(ReviewStat, { label: '已存入', value: `${totals.deposits}/${totals.max} ${unit}` }),
           h(ReviewStat, { label: '完成度', value: fmtPercent(rate) }),
-          h(ReviewStat, { label: '照片天数', value: `${totals.photoDays} 天` }),
-          h(ReviewStat, { label: '记录天数', value: `${totals.recordDays} 天` })),
-        h('div', { className: 'dshh-muted dshh-small' },
-          `近 7 天你存入了 ${totals.deposits}/${totals.max} 笔，照片覆盖 ${totals.photoDays} 天，`
-          + `有记录 ${totals.recordDays} 天。`),
-        h('div', { className: 'dshh-review-sub' }, '四账户'),
+          metabolic
+            ? h(ReviewStat, {
+                label: '化验状态',
+                value: labs?.hasCycleLab ? `已录 ${labs.cycleCount || 1} 次` : '待录入',
+                hint: labs?.latestAt ? `最近 ${localDateOf(labs.latestAt)}` : null,
+              })
+            : h(ReviewStat, { label: '照片天数', value: `${totals.photoDays} 天` }),
+          h(ReviewStat, { label: '记录天数', value: `${totals.recordDays ?? 0} 天` })),
+        h('div', { className: 'dshh-muted dshh-small' }, behaviourLine),
+        metabolic && h('div', { className: 'dshh-review-grid', style: { marginTop: 10 } },
+          h(ReviewStat, { label: '血压天数', value: totals.bpDays == null ? '—' : `${totals.bpDays} 天` }),
+          h(ReviewStat, { label: '饮食天数', value: totals.mealDays == null ? '—' : `${totals.mealDays} 天` }),
+          h(ReviewStat, { label: '活动分钟', value: totals.activityMinutes == null ? '—' : `${totals.activityMinutes} min` })),
+        h('div', { className: 'dshh-review-sub' }, metabolic ? '四账户（测 / 吃 / 动 / 睡）' : '四账户'),
         h('div', null, accounts.map((account) => {
           const week = account?.week ?? {}
           const label = week.label ?? `${week.met ?? 0}/${week.max ?? 7} 天`
@@ -4058,7 +6304,9 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dshh-review-sub' }, '可复制文本'),
         h('div', { className: 'dshh-copybox' }, text),
         h('div', { className: 'dshh-modal-note' },
-          '以上只是记录统计；断更不惩罚，下周补上即可。参考区间非医学标准，不构成诊断、训练或营养处方。'),
+          metabolic
+            ? '以上只是行为与记录统计，不评定身体好坏；断更不惩罚，下周补上即可。参考区间非医学标准，不构成诊断、治疗或用药建议。'
+            : '以上只是记录统计；断更不惩罚，下周补上即可。参考区间非医学标准，不构成诊断、训练或营养处方。'),
         h('div', { className: 'dshh-modal-actions' },
           h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
             onClick: copy }, '复制周报'),
@@ -4117,7 +6365,7 @@ window.__ModuleLoader__.load({
         (review.body ?? []).length === 0
           ? h('div', { className: 'dshh-muted dshh-small' }, '本赛季还没有可对照的体成分记录。')
           : h('div', null, review.body.map((row, index) => {
-              const unit = row?.unit ? ` ${row.unit}` : ''
+              const unit = row?.unit === '%' ? '%' : row?.unit ? ` ${row.unit}` : ''
               const baseline = row?.baseline == null ? '—' : `${row.baseline}${unit}`
               const latestValue = row?.latest ?? row?.currentDisplay
               const latest = latestValue == null ? '—' : `${latestValue}${unit}`
@@ -4145,9 +6393,13 @@ window.__ModuleLoader__.load({
       )
     }
 
-    /** Theory handbook: claim -> product mechanism -> boundary, plus sources. */
-    function HandbookModal({ templates, playbook: goalPlaybook, onClose }) {
-      const template = goalTemplateOf(templates, 'lean_muscle')
+    /**
+     * Theory handbook: claim -> product mechanism -> boundary, plus sources.
+     * `code` selects the metabolic (代谢手册) or lean-muscle (薄肌手册) cards.
+     */
+    function HandbookModal({ templates, playbook: goalPlaybook, code, onClose }) {
+      const metabolic = code === 'metabolic'
+      const template = goalTemplateOf(templates, metabolic ? 'metabolic' : 'lean_muscle')
       const templateCards = Array.isArray(template?.playbook)
         ? template.playbook.filter(Boolean)
         : []
@@ -4155,20 +6407,25 @@ window.__ModuleLoader__.load({
       const playbook = templateCards.length > 0
         ? templateCards
         : (Array.isArray(goalPlaybook) ? goalPlaybook.filter(Boolean) : [])
-      return h(ModalFrame, { title: '薄肌手册', onClose, wide: true },
+      const sources = metabolic ? METABOLIC_SOURCES : LEAN_SOURCES
+      return h(ModalFrame, { title: metabolic ? '代谢手册' : '薄肌手册', onClose, wide: true },
         h('div', { className: 'dshh-muted dshh-small', style: { marginBottom: 12 } },
-          '这里解释「为什么这样设计」：只做记录、参考区间与趋势，不提供动作、组数、食谱或补剂。网络主张是主张，不是事实。'),
+          metabolic
+            ? '这里解释「为什么这样设计」：只做记录、参考区间与趋势，不提供诊断、用药、食谱或训练计划。指南与网络主张只作为出处，不是个人处方。'
+            : '这里解释「为什么这样设计」：只做记录、参考区间与趋势，不提供动作、组数、食谱或补剂。网络主张是主张，不是事实。'),
         playbook.length === 0
           ? h('div', { className: 'dshh-empty', style: { padding: '18px' } },
               h('div', { className: 'dshh-empty-title' }, '手册内容暂未返回'),
               h('div', { className: 'dshh-empty-desc' },
-                '当前模板没有 playbook 字段；刷新或等服务端更新后再看。这不影响记录、对账与结算。'))
+                `当前模板没有 playbook 字段；刷新或等服务端更新后再看。这不影响记录、${
+                  metabolic ? '对账与复查摘要' : '对账与结算'}。`))
           : h('div', { className: 'dshh-handbook' }, playbook.map((card, index) =>
               h('div', { key: card.id ?? `card-${index}`, className: 'dshh-handbook-card' },
                 h('div', { className: 'dshh-handbook-title' },
                   `${index + 1}. ${card.title ?? '未命名'}`),
                 card.claim && h('div', { className: 'dshh-handbook-row' },
-                  h('span', { className: 'dshh-handbook-label' }, '网络主张'), card.claim),
+                  h('span', { className: 'dshh-handbook-label' },
+                    metabolic ? '网络 / 指南主张' : '网络主张'), card.claim),
                 card.takeaway && h('div', { className: 'dshh-handbook-row' },
                   h('span', { className: 'dshh-handbook-label' }, '本工具怎么用'), card.takeaway),
                 card.boundary && h('div', { className: 'dshh-handbook-row' },
@@ -4176,32 +6433,575 @@ window.__ModuleLoader__.load({
                 card.source && h('div', { className: 'dshh-handbook-source' },
                   `出处：${card.source}`)))),
         h('div', { className: 'dshh-review-sub' }, '参考来源（外部链接，非本工具观点）'),
-        h('div', { className: 'dshh-handbook-sources' }, LEAN_SOURCES.map((source) =>
+        h('div', { className: 'dshh-handbook-sources' }, sources.map((source) =>
           h('a', { key: source.url, href: source.url, target: '_blank',
             rel: 'noreferrer noopener' }, source.label))),
         h('div', { className: 'dshh-modal-note' },
-          `非医学、非训练、非营养处方。${LEAN_DISCLAIMER}`),
+          metabolic
+            ? `非医学、非处方。${METABOLIC_PLAYBOOK_DISCLAIMER}`
+            : `非医学、非训练、非营养处方。${LEAN_DISCLAIMER}`),
         h('div', { className: 'dshh-modal-actions' },
           h('button', { type: 'button', className: 'dshh-btn', onClick: onClose }, '关闭')),
       )
     }
 
-    /** Overview tab: hero -> coach tone -> deposits -> body -> goals. */
+    // ---------------------------------------------------------------- diet
+
+    function mealItemsText(items, max = 3) {
+      const list = (items ?? []).filter((item) => item && item.name)
+      if (list.length === 0) return ''
+      const shown = list.slice(0, max).map((item) => item.name)
+      return shown.join('、') + (list.length > shown.length ? ` 等 ${list.length} 项` : '')
+    }
+
+    function DietDayRow({ day }) {
+      const kcal = typeof day?.kcal === 'number' ? day.kcal : 0
+      const count = typeof day?.count === 'number' ? day.count : 0
+      const empty = count === 0 && kcal === 0
+      return h('div', { className: 'dshh-dietday' },
+        h('span', { className: 'dshh-dietday-date' },
+          day?.date ? `${fmtDay(day.date)} ${leanWeekdayOf(day.date)}`.trim() : '—'),
+        h('div', { className: 'dshh-dietday-bar', 'aria-hidden': true },
+          h('div', { className: 'dshh-dietday-fill',
+            style: { width: `${day?.barPercent ?? 0}%` } })),
+        h('span', { className: 'dshh-dietday-right' },
+          empty ? '—' : `${fmtNumber(kcal, 0)} kcal`,
+          empty ? null : h('small', null, `${count} 餐`)),
+      )
+    }
+
+    /** Diet tab: today's totals, rolling 7 days, meal list. Records only. */
+    function DietPane({ member, data, run, onToast, onNewMeal }) {
+      const diet = data?.diet ?? null
+      const [expanded, setExpanded] = useState({})
+      const [confirmId, setConfirmId] = useState(null)
+      const [brokenId, setBrokenId] = useState(null)
+      const [removing, setRemoving] = useState(false)
+      const timerRef = useRef(null)
+
+      useEffect(() => () => {
+        if (timerRef.current) clearTimeout(timerRef.current)
+      }, [])
+
+      function arm(id) {
+        setConfirmId(id)
+        if (timerRef.current) clearTimeout(timerRef.current)
+        timerRef.current = setTimeout(() => setConfirmId(null), 3000)
+      }
+
+      async function removeMeal(id) {
+        if (timerRef.current) clearTimeout(timerRef.current)
+        setConfirmId(null)
+        setRemoving(true)
+        try {
+          const result = await run('deleteMeal', { member: member.name, id })
+          onToast(result?.ok ? '已删除这餐' : (result?.error ?? '删除失败'))
+        } finally {
+          setRemoving(false)
+        }
+      }
+
+      function toggle(id) {
+        setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+      }
+
+      const today = diet?.today ?? todayKey()
+      const kcal = typeof diet?.kcal === 'number' ? diet.kcal : 0
+      const protein = typeof diet?.protein === 'number' ? diet.protein : 0
+      const count = typeof diet?.count === 'number' ? diet.count : 0
+      const days = Array.isArray(diet?.days) ? diet.days : []
+      // The host already returns newest first; sort defensively so the list is
+      // never out of order if a partial/older payload comes through.
+      const recent = (Array.isArray(diet?.recent) ? diet.recent : [])
+        .slice()
+        .sort((a, b) => String(b?.measuredAt ?? '').localeCompare(String(a?.measuredAt ?? '')))
+      const maxKcal = days.reduce((max, day) =>
+        Math.max(max, typeof day?.kcal === 'number' ? day.kcal : 0), 0)
+      const withBar = days.map((day) => ({
+        ...day,
+        barPercent: maxKcal > 0 && typeof day?.kcal === 'number'
+          ? (day.kcal > 0 ? Math.max(2, Math.round((day.kcal / maxKcal) * 100)) : 0)
+          : 0,
+      }))
+
+      return h('div', { className: 'dshh-dietpane' },
+        h('section', { className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '今日饮食'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                `只记录，不设热量目标 · ${today}`)),
+            h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+              onClick: onNewMeal }, '＋ 记一餐'),
+          ),
+          h('div', { className: 'dshh-dietstats' },
+            h('div', { className: 'dshh-dietstat' },
+              h('b', null, fmtNumber(kcal, 0)), h('span', null, '热量 kcal')),
+            h('div', { className: 'dshh-dietstat' },
+              h('b', null, fmtNumber(protein, 1)), h('span', null, '蛋白 g')),
+            h('div', { className: 'dshh-dietstat' },
+              h('b', null, String(count)), h('span', null, '已记餐数'))),
+          h('div', { className: 'dshh-dietnote' },
+            '仅记录，不设热量目标；估算值需你确认。热量与蛋白只做汇总和趋势，不设达标线。'),
+        ),
+        h('section', { className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('span', { className: 'dshh-cardtitle' }, '近 7 天'),
+            h('span', { className: 'dshh-muted dshh-small' }, '无记录的天显示「—」')),
+          days.length === 0
+            ? h('div', { className: 'dshh-muted dshh-small' }, '近 7 天数据暂未返回。')
+            : h('div', { className: 'dshh-dietdays' }, withBar.map((day, index) =>
+                h(DietDayRow, { key: day?.date ?? `diet-day-${index}`, day }))),
+        ),
+        h('section', { className: 'dshh-card' },
+          h('div', { className: 'dshh-cardhead' },
+            h('div', null,
+              h('span', { className: 'dshh-cardtitle' }, '餐次记录'),
+              h('div', { className: 'dshh-muted dshh-small' },
+                '按时间倒序，最近 20 条；照片只存本机')),
+            h('button', { type: 'button', className: 'dshh-btn', onClick: onNewMeal },
+              '＋ 记一餐')),
+          recent.length === 0
+            ? h('div', { className: 'dshh-empty', style: { padding: '18px' } },
+                h('div', { className: 'dshh-empty-title' }, '还没有饮食记录'),
+                h('div', { className: 'dshh-empty-desc' },
+                  '记一餐可以只填热量，也可以拍照后让模型估算、再由你确认。'),
+                h('div', { className: 'dshh-empty-actions' },
+                  h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+                    onClick: onNewMeal }, '＋ 记一餐')))
+            : h('div', { className: 'dshh-meals' }, recent.map((meal) => {
+                const isOpen = Boolean(expanded[meal.id])
+                const items = meal.items ?? []
+                const broken = brokenId === meal.id
+                const kcalText = typeof meal.kcal === 'number'
+                  ? `${fmtNumber(meal.kcal, 0)} kcal` : '未填热量'
+                const proteinText = typeof meal.protein === 'number'
+                  ? ` · 蛋白 ${fmtNumber(meal.protein, 1)} g` : ''
+                return h('div', { key: meal.id, className: 'dshh-meal' },
+                  meal.photo && !broken
+                    ? h('img', {
+                        className: 'dshh-meal-thumb', src: photoUrl(meal.photo.id),
+                        alt: '', loading: 'lazy',
+                        onError: () => setBrokenId(meal.id),
+                      })
+                    : h('div', { className: 'dshh-meal-thumb', 'aria-hidden': true }, '🍽'),
+                  h('div', { className: 'dshh-meal-main' },
+                    h('div', { className: 'dshh-meal-head' },
+                      h('span', { className: 'dshh-meal-type' },
+                        meal.mealTypeName ?? mealTypeName(meal.mealType)),
+                      h('span', { className: 'dshh-meal-time' }, fmtTime(meal.measuredAt))),
+                    h('div', { className: 'dshh-meal-nums' }, kcalText + proteinText),
+                    meal.note && h('div', { className: 'dshh-meal-note' }, meal.note),
+                    items.length > 0 && h('div', { className: 'dshh-meal-note' },
+                      mealItemsText(items)),
+                    isOpen && items.length > 0 && h('ul', { className: 'dshh-meal-items' },
+                      items.map((item, index) =>
+                        h('li', { key: `${meal.id}-item-${index}` },
+                          `${item?.name ?? '条目'}`
+                          + (item?.portion ? ` · ${item.portion}` : '')
+                          + (typeof item?.kcal === 'number' ? ` · ${item.kcal} kcal` : ''))))),
+                  h('div', { className: 'dshh-meal-actions' },
+                    items.length > 0 && h('button', {
+                      type: 'button', className: 'dshh-btn-ghost dshh-small',
+                      onClick: () => toggle(meal.id),
+                    }, isOpen ? '收起' : '展开'),
+                    confirmId === meal.id
+                      ? [
+                          h('button', { key: 'cancel', type: 'button',
+                            className: 'dshh-btn dshh-btn-sm',
+                            onClick: () => setConfirmId(null) }, '取消'),
+                          h('button', { key: 'confirm', type: 'button',
+                            className: 'dshh-btn dshh-btn-sm dshh-btn-danger',
+                            disabled: removing,
+                            onClick: () => removeMeal(meal.id) }, '确认删除'),
+                        ]
+                      : h('button', { type: 'button',
+                          className: 'dshh-btn-ghost dshh-small',
+                          onClick: () => arm(meal.id) }, '删除'),
+                  ))
+              })),
+        ),
+        h('div', { className: 'dshh-muted dshh-small',
+          style: { lineHeight: 1.6, padding: '0 2px' } },
+          diet?.disclaimer ?? data?.disclaimer ?? ''),
+      )
+    }
+
+    /** Compact "today's diet" card on the overview tab. */
+    function DietQuickCard({ diet, onNewMeal, onOpenDiet }) {
+      if (!diet) return null
+      const kcal = typeof diet.kcal === 'number' ? diet.kcal : 0
+      const protein = typeof diet.protein === 'number' ? diet.protein : 0
+      const count = typeof diet.count === 'number' ? diet.count : 0
+      const has = count > 0 || kcal > 0
+      return h('section', { className: 'dshh-card' },
+        h('div', { className: 'dshh-cardhead' },
+          h('div', null,
+            h('span', { className: 'dshh-cardtitle' }, '今日饮食'),
+            h('div', { className: 'dshh-muted dshh-small' },
+              '只记录，不设热量目标；估算值需你确认')),
+          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+            onOpenDiet && h('button', { type: 'button',
+              className: 'dshh-btn-ghost dshh-small', onClick: onOpenDiet }, '查看饮食'),
+            h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+              onClick: onNewMeal }, '＋ 记一餐'))),
+        has
+          ? h('div', { className: 'dshh-mealquick' },
+              h('div', { className: 'dshh-mealquick-nums' },
+                h('div', { className: 'dshh-mealquick-num' },
+                  h('b', null, fmtNumber(kcal, 0)), h('span', null, '热量 kcal')),
+                h('div', { className: 'dshh-mealquick-num' },
+                  h('b', null, fmtNumber(protein, 1)), h('span', null, '蛋白 g')),
+                h('div', { className: 'dshh-mealquick-num' },
+                  h('b', null, String(count)), h('span', null, '餐'))))
+          : h('div', { className: 'dshh-muted', style: { fontSize: 12 } }, '今天还没记录'),
+      )
+    }
+
+    /**
+     * "记一餐": optional photo + AI estimate (user confirms, then saves).
+     * Estimation never writes; only saveMeal persists.
+     */
+    function MealModal({ member, run, onClose, onToast, initialDate }) {
+      const fileRef = useRef(null)
+      // Backfilling from the weekly ledger passes the cell date; a non-today
+      // date opens at a neutral lunchtime clock and stays editable.
+      const seedTime = () => {
+        const raw = String(initialDate ?? '')
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return toLocalInput()
+        if (raw === todayKey()) return toLocalInput()
+        return `${raw}T12:00`
+      }
+      const [mealType, setMealType] = useState(() => inferMealType())
+      const [time, setTime] = useState(seedTime)
+      const [note, setNote] = useState('')
+      const [preview, setPreview] = useState(null)
+      const [fileName, setFileName] = useState(null)
+      const [kcal, setKcal] = useState('')
+      const [protein, setProtein] = useState('')
+      const [items, setItems] = useState([])
+      const [estimate, setEstimate] = useState(null)
+      const [estimateError, setEstimateError] = useState(null)
+      const [picking, setPicking] = useState(false)
+      const [estimating, setEstimating] = useState(false)
+      const [saving, setSaving] = useState(false)
+      const [error, setError] = useState(null)
+      // Which provider/model reads the photo. Device-level preference stored by
+      // the Host; `auto` keeps the default-model/first-vision-model behaviour.
+      const [modelCatalog, setModelCatalog] = useState(null)
+      const [modelError, setModelError] = useState(null)
+      const [modelSaving, setModelSaving] = useState(false)
+      const busy = picking || estimating || saving
+
+      // Read the catalog lazily: a failure only disables the picker, the manual
+      // calorie path stays available.
+      useEffect(() => {
+        let stale = false
+        postAction('getEstimateModels', {})
+          .then((result) => {
+            if (stale) return
+            if (result?.ok) setModelCatalog(result)
+            else if (/未知操作/.test(String(result?.error ?? ''))) {
+              // An older Host build has no model preference yet: keep the
+              // estimate button working and simply hide the picker.
+              setModelCatalog({
+                unsupported: true,
+                settings: { mode: 'auto', provider: null, model: null },
+                routes: [],
+                resolved: null,
+              })
+            } else setModelError(result?.error ?? '读取估算模型失败')
+          })
+          .catch((cause) => {
+            if (!stale) setModelError(`读取估算模型失败：${String(cause?.message ?? cause)}`)
+          })
+        return () => { stale = true }
+      }, [])
+
+      async function onPick(event) {
+        const file = event.target.files?.[0] ?? null
+        event.target.value = ''
+        if (!file) return
+        setError(null)
+        setEstimateError(null)
+        setPicking(true)
+        try {
+          const dataUrl = await compressPhoto(file)
+          setPreview(dataUrl)
+          setFileName(file.name || `meal-${Date.now()}.jpg`)
+          setEstimate(null)
+          setItems([])
+        } catch (cause) {
+          setError(`照片处理失败：${String(cause?.message ?? cause)}`)
+        } finally {
+          setPicking(false)
+        }
+      }
+
+      function clearPhoto() {
+        setPreview(null)
+        setFileName(null)
+        setEstimate(null)
+        setEstimateError(null)
+        setItems([])
+      }
+
+      async function runEstimate() {
+        if (!preview) return
+        setEstimateError(null)
+        setEstimating(true)
+        try {
+          const result = await run('estimateMeal', {
+            member: member.name,
+            dataBase64: preview,
+            note,
+            mealType,
+          })
+          if (!result?.ok) {
+            setEstimateError(result?.error ?? '估算失败，可手动填写热量')
+            return
+          }
+          const estimatePayload = result.estimate ?? {}
+          setEstimate(estimatePayload)
+          if (typeof estimatePayload.kcal === 'number') {
+            setKcal(String(Math.round(estimatePayload.kcal)))
+          }
+          if (typeof estimatePayload.protein === 'number') {
+            setProtein(String(Math.round(estimatePayload.protein)))
+          }
+          setItems(Array.isArray(estimatePayload.items) ? estimatePayload.items : [])
+        } catch (cause) {
+          setEstimateError(`估算失败：${String(cause?.message ?? cause)}`)
+        } finally {
+          setEstimating(false)
+        }
+      }
+
+      async function save() {
+        setError(null)
+        const kcalText = String(kcal ?? '').trim()
+        const kcalValue = Number(kcalText)
+        if (kcalText === '' || !Number.isFinite(kcalValue) || kcalValue < 0 || kcalValue > 10000) {
+          setError('请填写 0–10000 之间的热量（kcal）')
+          return
+        }
+        const proteinText = String(protein ?? '').trim()
+        let proteinValue
+        if (proteinText !== '') {
+          proteinValue = Number(proteinText)
+          if (!Number.isFinite(proteinValue) || proteinValue < 0 || proteinValue > 400) {
+            setError('蛋白请填写 0–400 g 之间的数字，或留空')
+            return
+          }
+        }
+        setSaving(true)
+        try {
+          const result = await run('saveMeal', {
+            member: member.name,
+            dataBase64: preview || undefined,
+            measuredAt: toApiTime(time),
+            mealType,
+            kcal: kcalValue,
+            protein: proteinValue,
+            note,
+            items: items.length > 0 ? items : undefined,
+            fileName: fileName || undefined,
+          })
+          if (!result?.ok) { setError(result?.error ?? '保存失败'); return }
+          onToast('已记录这一餐')
+          onClose()
+        } catch (cause) {
+          setError(`保存失败：${String(cause?.message ?? cause)}`)
+        } finally {
+          setSaving(false)
+        }
+      }
+
+      async function onPickModel(event) {
+        const value = String(event.target.value ?? 'auto')
+        const payload = value === 'auto'
+          ? { mode: 'auto', provider: null, model: null }
+          : {
+            mode: 'fixed',
+            provider: value.split('::')[0],
+            model: value.split('::').slice(1).join('::'),
+          }
+        setModelError(null)
+        setModelSaving(true)
+        try {
+          const result = await postAction('setEstimateSettings', { settings: payload })
+          if (!result?.ok) {
+            setModelError(result?.error ?? '切换估算模型失败')
+            return
+          }
+          setModelCatalog(result)
+          onToast?.(value === 'auto' ? '估算模型已改为自动选择' : '估算模型已切换')
+        } catch (cause) {
+          setModelError(`切换估算模型失败：${String(cause?.message ?? cause)}`)
+        } finally {
+          setModelSaving(false)
+        }
+      }
+
+      const modelSettings = modelCatalog?.settings ?? { mode: 'auto', provider: null, model: null }
+      const modelRoutes = modelCatalog?.routes ?? []
+      const fixedKey = modelSettings.mode === 'fixed' && modelSettings.provider && modelSettings.model
+        ? `${modelSettings.provider}::${modelSettings.model}`
+        : null
+      const routeKeys = new Set(modelRoutes.map((route) => `${route.provider}::${route.model}`))
+      const modelValue = fixedKey ?? 'auto'
+      const resolvedRoute = modelCatalog?.resolved ?? null
+      const resolvedLabel = resolvedRoute
+        ? `当前：${resolvedRoute.modelName ?? resolvedRoute.model}`
+          + (resolvedRoute.providerName ? ` · ${resolvedRoute.providerName}` : '')
+          + (resolvedRoute.source === 'fixed'
+            ? '（已指定）'
+            : resolvedRoute.source === 'default' ? '（默认模型）' : '（自动选择）')
+        : modelCatalog
+          ? '当前没有可用的图片模型：估算会提示手动填写。'
+          : modelError ? '模型列表读取失败，仍可手动填写热量。' : '正在读取模型列表…'
+
+      const estimateRange = estimate
+        && typeof estimate.kcalLow === 'number' && typeof estimate.kcalHigh === 'number'
+        ? `（区间 ${fmtNumber(estimate.kcalLow, 0)}–${fmtNumber(estimate.kcalHigh, 0)}）`
+        : ''
+      const estimateProtein = estimate && typeof estimate.protein === 'number'
+        ? ` · 蛋白约 ${fmtNumber(estimate.protein, 0)} g` : ''
+
+      const footer = h('div', { className: 'dshh-modal-actions' },
+        h('span', { className: 'dshh-muted dshh-small', style: { marginRight: 'auto' } },
+          '保存后才会写入本机'),
+        h('button', { type: 'button', className: 'dshh-btn', onClick: onClose }, '取消'),
+        h('button', { type: 'button', className: 'dshh-btn dshh-btn-primary',
+          onClick: save, disabled: busy }, saving ? '保存中…' : '保存这一餐'),
+      )
+
+      return h(ModalFrame, { title: `记一餐 · ${member.name}`, onClose, footer, wide: true },
+        h('div', { className: 'dshh-field-row' },
+          h('div', { className: 'dshh-field' },
+            h('label', { className: 'dshh-field-label' }, '餐次'),
+            h('select', { className: 'dshh-select', value: mealType,
+              onChange: (e) => setMealType(e.target.value) },
+              MEAL_TYPES.map((item) =>
+                h('option', { key: item.code, value: item.code }, item.name))),
+          ),
+          h('div', { className: 'dshh-field' },
+            h('label', { className: 'dshh-field-label' }, '时间'),
+            h('input', { className: 'dshh-input', type: 'datetime-local', value: time,
+              onChange: (e) => setTime(e.target.value) }),
+          ),
+        ),
+        h('div', { className: 'dshh-field' },
+          h('label', { className: 'dshh-field-label' }, '照片（可选）'),
+          h('div', { className: 'dshh-upload' },
+            h('input', {
+              ref: fileRef, type: 'file', accept: 'image/*', capture: 'environment',
+              onChange: onPick, style: { display: 'none' },
+            }),
+            h('button', { type: 'button', className: 'dshh-btn',
+              onClick: () => fileRef.current?.click() },
+              picking ? '处理中…' : preview ? '重新选择' : '拍照 / 选择照片'),
+            preview && h('button', { type: 'button',
+              className: 'dshh-btn-ghost dshh-small', onClick: clearPhoto }, '移除照片'),
+            h('span', { className: 'dshh-privacy' },
+              '最长边压缩至 1400px · JPEG 0.82 · 只存本机'),
+          ),
+          preview && h('img', { className: 'dshh-capture-preview', src: preview, alt: '餐食照片预览' }),
+        ),
+        !modelCatalog?.unsupported && h('div', { className: 'dshh-field' },
+          h('label', { className: 'dshh-field-label' }, '估算模型'),
+          h('select', {
+            className: 'dshh-select',
+            value: modelValue,
+            disabled: modelSaving || !modelCatalog,
+            onChange: onPickModel,
+          },
+            h('option', { value: 'auto' }, '自动选择（默认模型优先）'),
+            modelRoutes.map((route) => h('option', {
+              key: `${route.provider}::${route.model}`,
+              value: `${route.provider}::${route.model}`,
+            }, `${route.modelName} · ${route.providerName}`)),
+            fixedKey && !routeKeys.has(fixedKey) && h('option', { value: fixedKey },
+              `${modelSettings.model} · ${modelSettings.provider}（不在当前列表）`),
+          ),
+          h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 4 } }, resolvedLabel),
+          modelError && h('div', { className: 'dshh-note dshh-small', style: { marginTop: 4 } }, modelError),
+          h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 4 } },
+            '接入新模型：在 DSH 设置 → 模型服务里添加；声明了图片输入的模型会出现在这里。'),
+        ),
+        h('div', { className: 'dshh-privacy' },
+          '估算会把照片发送给所选模型服务，仅用于本次估算，不入库、不用于训练；点保存后才写入本机。'),
+        preview && h('div', null,
+          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
+            h('button', { type: 'button', className: 'dshh-btn',
+              disabled: busy, onClick: runEstimate },
+              estimating ? '估算中…' : 'AI 估算热量')),
+          estimate && h('div', { className: 'dshh-mealestimate' },
+            h('div', { className: 'dshh-mealestimate-title' },
+              `估算 ${fmtNumber(estimate.kcal, 0)} kcal${estimateRange}${estimateProtein}`),
+            (estimate.items ?? []).length > 0 && h('ul', { className: 'dshh-meal-items' },
+              estimate.items.map((item, index) =>
+                h('li', { key: `estimate-item-${index}` },
+                  `${item?.name ?? '条目'}`
+                  + (item?.portion ? ` · ${item.portion}` : '')
+                  + (typeof item?.kcal === 'number' ? ` · ${item.kcal} kcal` : '')))),
+            h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 6 } },
+              '估算值需你确认后才会保存，可手动修改；受份量、用油与遮挡影响，误差较大。'),
+            h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 4 } },
+              `本次由 ${estimate.modelName ?? estimate.model ?? '当前模型'} 估算`
+              + (estimate.providerName ? ` · ${estimate.providerName}` : '')),
+          ),
+          estimateError && h('div', { className: 'dshh-note dshh-small',
+            style: { marginTop: 8 } },
+            `${estimateError}——也可以直接手动填写热量。`),
+        ),
+        h('div', { className: 'dshh-field-row' },
+          h('div', { className: 'dshh-field' },
+            h('label', { className: 'dshh-field-label' }, '热量 kcal（必填）'),
+            h('input', { className: 'dshh-input', type: 'number', inputMode: 'decimal',
+              min: 0, max: 10000, placeholder: '如 620', value: kcal,
+              onChange: (e) => setKcal(e.target.value) }),
+          ),
+          h('div', { className: 'dshh-field' },
+            h('label', { className: 'dshh-field-label' }, '蛋白 g（选填）'),
+            h('input', { className: 'dshh-input', type: 'number', inputMode: 'decimal',
+              min: 0, max: 400, placeholder: '如 30', value: protein,
+              onChange: (e) => setProtein(e.target.value) }),
+          ),
+        ),
+        h('div', { className: 'dshh-field' },
+          h('label', { className: 'dshh-field-label' }, '备注（可选）'),
+          h('input', { className: 'dshh-input', placeholder: '如：外食、白水换了一杯甜饮',
+            value: note, onChange: (e) => setNote(e.target.value) }),
+        ),
+        h('div', { className: 'dshh-muted dshh-small', style: { lineHeight: 1.6 } },
+          '热量只记录、汇总与看趋势；不设达标线，也不做差值评价。'),
+        error && h('div', { className: 'dshh-error', style: { marginTop: 10 } }, error),
+      )
+    }
+
+    /** Overview tab: hero -> coach tone -> deposits -> statement -> cycle. */
     function OverviewPane(props) {
       const {
         member, data, goals, templates, catalogs, contexts, photos, run,
         onToast, onEntry, onManageGoal, onSetGoal, onMetric, onDeleteRecord,
         onCapturePhoto, onOpenPhotosTab,
         onDeposit, onOpenWeekly, onOpenSeason,
+        onNewMeal, onOpenDiet,
+        onOpenAccount, onOpenLab, onOpenVisitSummary,
+        onOpenMetabolicWeekly, onStartMetabolicCycle, onOpenSeasonTab,
       } = props
       const [tone, setTone] = useState(() => readTone(member.id))
       const [toneSeen, setToneSeen] = useState(() => readToneSeen(member.id))
       const [lineIndex, setLineIndex] = useState(0)
+      // Which dashboard is open when a member has both metabolic and lean goals.
+      const [dashGoal, setDashGoal] = useState('metabolic')
 
       useEffect(() => {
         setTone(readTone(member.id))
         setToneSeen(readToneSeen(member.id))
         setLineIndex(0)
+        setDashGoal('metabolic')
       }, [member.id])
 
       const recent = data.recent ?? []
@@ -4212,15 +7012,34 @@ window.__ModuleLoader__.load({
       // fall back to the legacy quick-log layout instead of showing empty boards.
       const leanReady = Boolean(leanGoal
         && Array.isArray(leanGoal.accounts) && leanGoal.accounts.length > 0)
-      // On an active lean dashboard the goal card and the generic "latest
-      // metrics" block duplicate the accounts / body statement. Keep them for
-      // the metabolic view, and keep the goal card when goals data is broken so
-      // the error stays visible.
-      const leanDashboard = leanReady && leanGoal?.status === 'active'
-      const showGoalCards = !leanDashboard || Boolean(data.goalError)
+      // The metabolic ledger needs the whole v4 payload; a partial host keeps
+      // the legacy dashboard (quick log + goal cards + latest metrics).
+      const metabolicGoal = metabolicActiveGoalOf(goals)
+      const metabolicReady = Boolean(metabolicGoal && metabolicLedgerReady(metabolicGoal))
+      const dualGoals = Boolean(leanReady && metabolicReady)
+      const activeDash = dualGoals
+        ? (dashGoal === 'lean_muscle' ? 'lean_muscle' : 'metabolic')
+        : metabolicReady
+          ? 'metabolic'
+          : leanReady
+            ? 'lean_muscle'
+            : null
+      const leanDashboard = activeDash === 'lean_muscle'
+      const metabolicDashboard = activeDash === 'metabolic'
+      // On an active ledger dashboard the goal card and the generic "latest
+      // metrics" block duplicate the accounts / statement. Keep them for the
+      // legacy view, and keep the goal card when goals data is broken so the
+      // error stays visible.
+      const showGoalCards = (!leanDashboard && !metabolicDashboard) || Boolean(data.goalError)
+      const showQuickLog = !leanReady && !metabolicReady && goals.length > 0
       const hasActiveGoal = goals.some((goal) => goal.status === 'active')
       const lines = coachLines(tone, ctx)
       const line = lines.length > 0 ? lines[lineIndex % lines.length] : ''
+      const coachIntro = ctx.metabolic
+        ? '硬核模式只针对行动（测 / 吃 / 动 / 睡 / 化验），不评价指标与身体；不适可切温和或关闭。'
+        : ctx.lean
+          ? '硬核模式只针对行动（练 / 大餐 / 睡 / 水 / 照片），不评价你的身体；不适可切温和或关闭。'
+          : '硬核模式只针对行动（记录 / 训练 / 饮食），不评价你的身体；不适可切温和或关闭。'
 
       function chooseTone(next) {
         setTone(next)
@@ -4238,8 +7057,12 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'dshh-overview' },
         h(CutHero, {
           goals, photos, recent, todayPhoto,
+          dashboardGoal: activeDash,
+          onDashboardGoalChange: setDashGoal,
           onCapturePhoto, onRecord: onEntry, onOpenPhotosTab, onManageGoal,
           onOpenDeposit: onDeposit, onOpenWeekly, onOpenSeason,
+          onOpenAccount, onOpenMetabolicWeekly,
+          onOpenVisitSummary, onStartMetabolicCycle,
         }),
         h(CoachTone, {
           mode: tone,
@@ -4249,24 +7072,65 @@ window.__ModuleLoader__.load({
           showIntro: tone === 'hard' && !toneSeen,
           onDismissIntro: dismissIntro,
           hidden: !hasActiveGoal,
+          intro: coachIntro,
         }),
-        leanReady
-          ? h(DepositCard, {
-              goal: leanGoal, todayPhoto,
-              onOpenDeposit: onDeposit,
-              onCapturePhoto,
-              onOpenPhotosTab,
-            })
-          : goals.length > 0 && h(QuickLog, {
-              member, goals, templates, catalogs, contexts, run,
-              onToast, onMore: onEntry, onSetGoal, onManageGoal,
-            }),
-        leanGoal && h(BodyStatement, { goal: leanGoal, onMetric }),
+        metabolicDashboard
+          ? h('div', { className: 'dshh-overview' },
+              h(MetabolicDepositCard, {
+                goal: metabolicGoal,
+                onOpenAccount,
+                onOpenLab,
+              }),
+              h(MetabolicLedger, {
+                goal: metabolicGoal,
+                onOpenAccount,
+                onOpenMetabolicWeekly,
+              }),
+              h(MetabolicStatement, { goal: metabolicGoal, onMetric }),
+              h(MetabolicCycleCard, {
+                goal: metabolicGoal,
+                onOpenVisitSummary,
+                onOpenMetabolicWeekly,
+                onStartMetabolicCycle,
+              }),
+              leanReady && h('section', { className: 'dshh-card dshh-met-crosslink' },
+                h('div', { className: 'dshh-muted dshh-small' },
+                  '薄肌账户在「赛季」Tab 独立运行；体成分只做对账单，不计分、不排名。'),
+                h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 } },
+                  h('button', { type: 'button', className: 'dshh-btn dshh-btn-sm',
+                    onClick: () => setDashGoal('lean_muscle') }, '切换到薄肌账户'),
+                  h('button', { type: 'button', className: 'dshh-btn dshh-btn-sm',
+                    onClick: onOpenSeasonTab }, '打开赛季 Tab'))))
+          : leanDashboard
+            ? h(DepositCard, {
+                goal: leanGoal, todayPhoto,
+                onOpenDeposit: onDeposit,
+                onCapturePhoto,
+                onOpenPhotosTab,
+              })
+            : showQuickLog && h(QuickLog, {
+                member, goals, templates, catalogs, contexts, run,
+                onToast, onMore: onEntry, onSetGoal, onManageGoal,
+              }),
+        leanDashboard && h(BodyStatement, {
+          goal: leanGoal, onMetric, latest: data.latest, series: data.series,
+        }),
+        leanDashboard && metabolicReady && h('section', { className: 'dshh-card dshh-met-crosslink' },
+          h('div', { className: 'dshh-muted dshh-small' },
+            '代谢对账簿在「复查」Tab 独立运行；行为账户与指标对账单互不影响。'),
+          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 } },
+            h('button', { type: 'button', className: 'dshh-btn dshh-btn-sm',
+              onClick: () => setDashGoal('metabolic') }, '切换到代谢对账簿'))),
         showGoalCards && h(GoalCards, {
           goals, templates, error: data.goalError,
           onManage: onManageGoal, onSet: onSetGoal, onRecord: onEntry,
         }),
-        !leanDashboard && h(LatestMetrics, { latest: data.latest, catalogs, onMetricClick: onMetric }),
+        data.diet && h(DietQuickCard, {
+          diet: data.diet, onNewMeal, onOpenDiet,
+        }),
+        !leanDashboard && !metabolicDashboard && h(LatestMetrics, {
+          latest: data.latest, catalogs, onMetricClick: onMetric,
+        }),
         recent.length > 0 && h(RecentRecords, {
           records: recent, onDelete: onDeleteRecord, onRecord: onEntry,
         }),
@@ -5201,7 +8065,7 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------- modals
 
-    function ModalHost({ modal, data, catalogs, busy, run, onClose, onOpenMember, onOpenGoal, onNewGoal, onToast, onDeleteMember }) {
+    function ModalHost({ modal, data, catalogs, busy, run, onClose, onOpenMember, onOpenGoal, onNewGoal, onNewMeal, onToast, onDeleteMember }) {
       const member = data?.member ?? null
 
       if (modal.kind === 'member') {
@@ -5226,6 +8090,19 @@ window.__ModuleLoader__.load({
           member, catalogs, contexts: catalogs?.contexts ?? CONTEXT_FALLBACK,
           busy, run, onClose, onToast,
           goalCodes: goalMetricCodeSet(data?.goals, data?.goalTemplates),
+        })
+      }
+      if (modal.kind === 'diet') {
+        return h(ModalFrame, { title: '饮食管理', onClose, wide: true },
+          h(DietPane, {
+            member, data, run, onToast,
+            onNewMeal: () => onNewMeal?.(),
+          }))
+      }
+      if (modal.kind === 'meal') {
+        return h(MealModal, {
+          member, run, onClose, onToast,
+          initialDate: modal.date ?? null,
         })
       }
       if (modal.kind === 'document') {
@@ -5261,10 +8138,29 @@ window.__ModuleLoader__.load({
           run, onClose, onToast,
         })
       }
+      if (modal.kind === 'familyMonitor') {
+        return h(FamilyMonitorModal, {
+          member,
+          date: modal.date ?? todayKey(),
+          run, onClose, onToast,
+        })
+      }
+      if (modal.kind === 'labEntry') {
+        return h(LabEntryModal, { member, run, onClose, onToast })
+      }
+      if (modal.kind === 'visitSummary') {
+        return h(VisitSummaryModal, {
+          member,
+          goal: metabolicGoalOf(data?.goals),
+          onClose, onToast,
+        })
+      }
       if (modal.kind === 'weeklyReview') {
         return h(WeeklyReviewModal, {
           member,
-          goal: leanGoalOf(data?.goals),
+          goal: modal.code === 'metabolic'
+            ? metabolicGoalOf(data?.goals)
+            : leanGoalOf(data?.goals),
           onClose, onToast,
         })
       }
@@ -5293,9 +8189,13 @@ window.__ModuleLoader__.load({
         })
       }
       if (modal.kind === 'handbook') {
+        const handbookCode = modal.code === 'metabolic' ? 'metabolic' : 'lean_muscle'
         return h(HandbookModal, {
           templates: data?.goalTemplates ?? [],
-          playbook: leanGoalOf(data?.goals)?.playbook ?? null,
+          playbook: handbookCode === 'metabolic'
+            ? metabolicGoalOf(data?.goals)?.playbook ?? null
+            : leanGoalOf(data?.goals)?.playbook ?? null,
+          code: handbookCode,
           onClose,
         })
       }
@@ -5307,7 +8207,9 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dshh-note', style: { border: 'none', background: 'transparent', padding: 0 } },
             data?.disclaimer),
           h('div', { className: 'dshh-modal-note' },
-            '管理目标表示你想管理什么，不代表诊断或患病结论；目标值来自通用参考区间，个人目标与是否患病请以医生意见为准。薄肌等体态目标的参考区间来自运动/营养公开共识，非医学标准，不构成训练、营养或用药处方。'),
+            '管理目标表示你想管理什么，不代表诊断或患病结论；目标值来自通用参考区间，个人目标与是否患病请以医生意见为准。'
+            + '代谢管理的参考区间来自中国指南与国家膳食规范，只用于记录与对照，不构成诊断、治疗、用药、食谱或训练计划。'
+            + '薄肌等体态目标的参考区间来自运动/营养公开共识，非医学标准，不构成训练、营养或用药处方。'),
           h('div', { className: 'dshh-modal-actions' },
             h('button', { type: 'button', className: 'dshh-btn', onClick: onClose }, '关闭')),
         )
@@ -5353,7 +8255,8 @@ window.__ModuleLoader__.load({
                     h('span', { className: 'dshh-goalchip', 'data-status': goal.status },
                       goal.statusName ?? GOAL_STATUS_LABEL[goal.status] ?? goal.status)),
                   h('div', { className: 'dshh-muted dshh-small' },
-                    `达标 ${goal.coverage?.met ?? 0}/${goal.coverage?.evaluable ?? 0}`
+                    `${goal.code === 'metabolic' ? '已记录' : '达标'} `
+                    + `${goal.coverage?.measured ?? 0}/${goal.coverage?.evaluable ?? 0}`
                     + ` · 最近记录 ${goal.coverage?.lastRecordAt ? fmtTime(goal.coverage.lastRecordAt) : '暂无'}`),
                 ),
                 h('button', { type: 'button', className: 'dshh-btn', onClick: () => onManage(goal) }, '管理'),
@@ -5415,21 +8318,53 @@ window.__ModuleLoader__.load({
       const [name, setName] = useState(member?.name ?? '')
       const [sex, setSex] = useState(member?.sexCode ?? 'male')
       const [relation, setRelation] = useState(member?.relationCode ?? 'self')
-      const [riskLevel, setRiskLevel] = useState(member?.riskCode ?? 'low')
+      const [riskLevel, setRiskLevel] = useState(member?.riskCode ?? 'unknown')
+      const [height, setHeight] = useState(member?.height != null ? String(member.height) : '')
       const [birthYear, setBirthYear] = useState(member?.birthYear ?? '')
       const [note, setNote] = useState(member?.note ?? '')
       const [error, setError] = useState(null)
       const [confirmDelete, setConfirmDelete] = useState(false)
 
+      // Risk stratification is optional and defaults to "not assessed". The host
+      // catalog may lag behind, so always guarantee an "unknown" first option.
+      const riskOptions = useMemo(() => {
+        const list = (catalogs?.riskLevels ?? []).filter(Boolean)
+        if (list.length === 0) {
+          return [
+            { code: 'unknown', name: '未评估（不了解 / 未由医生评估）' },
+            { code: 'low', name: '低危' },
+            { code: 'medium', name: '中危' },
+            { code: 'high', name: '高危' },
+            { code: 'veryHigh', name: '极高危' },
+          ]
+        }
+        if (list.some((item) => item.code === 'unknown')) return list
+        return [{ code: 'unknown', name: '未评估（不了解 / 未由医生评估）' }, ...list]
+      }, [catalogs])
+
       async function save() {
         setError(null)
         if (!name.trim()) { setError('请填写称呼'); return }
-        const patch = { name, sex, relation, riskLevel }
+        let heightValue = null
+        const heightText = String(height ?? '').trim()
+        if (heightText !== '') {
+          const parsed = Number(heightText)
+          if (!Number.isFinite(parsed) || parsed < 80 || parsed > 250) {
+            setError('身高请填写 80–250 cm 之间的数字，或留空')
+            return
+          }
+          heightValue = Math.round(parsed * 10) / 10
+        }
+        const patch = { name, sex, relation, riskLevel, height: heightValue }
         patch.birthYear = birthYear === '' ? undefined : Number(birthYear)
         patch.note = note
         const result = editing
           ? await run('updateMember', { member: member.name, patch })
-          : await run('createMember', { name, sex, relation, riskLevel, birthYear: patch.birthYear, note })
+          : await run('createMember', {
+              name, sex, relation, riskLevel,
+              height: heightValue,
+              birthYear: patch.birthYear, note,
+            })
         if (result?.ok) onClose()
         else setError(result?.error ?? '保存失败')
       }
@@ -5457,18 +8392,31 @@ window.__ModuleLoader__.load({
         ),
         h('div', { className: 'dshh-field-row' },
           h('div', { className: 'dshh-field' },
-            h('label', { className: 'dshh-field-label' }, '心血管风险分层'),
-            h('select', { className: 'dshh-select', value: riskLevel,
-              onChange: (e) => setRiskLevel(e.target.value) },
-              (catalogs?.riskLevels ?? []).map((item) =>
-                h('option', { key: item.code, value: item.code }, item.name))),
+            h('label', { className: 'dshh-field-label' }, '身高 cm（选填）'),
+            h('input', { className: 'dshh-input', placeholder: '如 175',
+              inputMode: 'decimal', value: height,
+              onChange: (e) => setHeight(e.target.value) }),
+            h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 4 } },
+              '用于自动计算 BMI，不必每次录入'),
           ),
           h('div', { className: 'dshh-field' },
-            h('label', { className: 'dshh-field-label' }, '出生年份'),
+            h('label', { className: 'dshh-field-label' }, '出生年份（选填）'),
             h('input', { className: 'dshh-input', placeholder: '如 1965',
               inputMode: 'numeric', value: birthYear,
               onChange: (e) => setBirthYear(e.target.value) }),
           ),
+        ),
+        h('div', { className: 'dshh-field' },
+          h('label', { className: 'dshh-field-label' }, '心血管风险分层（选填）'),
+          h('select', { className: 'dshh-select', value: riskLevel,
+            onChange: (e) => setRiskLevel(e.target.value) },
+            riskOptions.map((item) =>
+              h('option', { key: item.code, value: item.code }, item.name))),
+          h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 4 } },
+            '不了解可保持未评估；该字段只影响 LDL 等参考区间，不代表诊断。'),
+          editing && member?.riskCode === 'low' && h('div', {
+            className: 'dshh-muted dshh-small', style: { marginTop: 4 },
+          }, '旧版本会把未填写默认成「低危」；如果你没有由医生评估过，可改为「未评估」。'),
         ),
         h('div', { className: 'dshh-field' },
           h('label', { className: 'dshh-field-label' }, '备注（如既往病史，仅记录不作判断）'),
@@ -5476,7 +8424,7 @@ window.__ModuleLoader__.load({
             onChange: (e) => setNote(e.target.value) }),
         ),
         h('div', { className: 'dshh-muted', style: { fontSize: '11px' } },
-          '性别用于尿酸与 HDL 的参考区间；风险分层影响 LDL 目标值。'),
+          '性别用于尿酸与 HDL 的参考区间；身高只用于计算 BMI；风险分层只影响 LDL 等参考区间。'),
         error && h('div', { className: 'dshh-error', style: { marginTop: 10 } }, error),
         h('div', { className: 'dshh-modal-actions' },
           editing && h('button', { type: 'button', className: 'dshh-btn dshh-btn-danger',
@@ -5519,8 +8467,9 @@ window.__ModuleLoader__.load({
         { code: 'glucose', name: '血糖', codes: ['fpg', 'ppg', 'hba1c'] },
         { code: 'lipid', name: '血脂', codes: ['tc', 'tg', 'ldl', 'hdl'] },
         { code: 'body', name: '体重 / 体成分', codes: ['weight', 'bmi', 'bodyfat', 'muscle', 'waist'] },
-        { code: 'diet', name: '饮食 / 睡眠 / 饮水', codes: ['protein', 'water', 'sleep'] },
-        { code: 'activity', name: '运动', codes: ['training'] },
+        { code: 'diet', name: '饮食 / 饮水', codes: ['kcal', 'protein', 'water', 'sugary'] },
+        { code: 'activity', name: '运动', codes: ['training', 'activity'] },
+        { code: 'recovery', name: '恢复 / 睡眠', codes: ['sleep'] },
       ]
       const categories = (catalogs?.categories ?? []).length > 0
         ? catalogs.categories.map((category) => ({ code: category.code, name: category.name, codes: null }))
@@ -5650,6 +8599,10 @@ window.__ModuleLoader__.load({
                 ),
               ),
               open && h('div', { className: 'dshh-accbody' },
+                group.code === 'body' && member?.height
+                  ? h('div', { className: 'dshh-muted dshh-small', style: { marginBottom: 8 } },
+                      `已知身高 ${member.height} cm：填体重后会自动计算 BMI，BMI 可留空。`)
+                  : null,
                 h('div', { className: 'dshh-entry-grid' }, group.metrics.map((metric) =>
                   h('div', { key: metric.code, className: 'dshh-entry-cell' },
                     h('span', { className: 'dshh-entry-name' }, metric.name),
@@ -6096,12 +9049,1200 @@ window.__ModuleLoader__.load({
     // Preview-only debug handle used by local acceptance tooling. It is not
     // used by the panel itself.
     if (typeof window !== 'undefined') {
-      window.__dshHealthDebug = { SeasonPane, DiscoverPane, ArchiveHub, WeeklyLedger, SquadModal, ShareSeasonModal }
+      window.__dshHealthDebug = {
+        SeasonPane, DiscoverPane, ArchiveHub, WeeklyLedger, SquadModal, ShareSeasonModal,
+        MetabolicPane, MetabolicStatement, MetabolicLedger, MetabolicCycleCard, MetabolicHero,
+        MetabolicDepositCard, CutHero, DualHero, HandbookModal, OverviewPane,
+        FamilyMonitorModal, LabEntryModal, VisitSummaryModal, WeeklyReviewModal,
+      }
     }
 
+    // ------------------------------------------------------------- floating
+    //
+    // The avatar and its Settings section share one small store. The Host owns
+    // the durable copy (float.json); localStorage is only a first-paint cache so
+    // the avatar appears at its saved position without a visible jump.
+
+    let floatSnapshot = {
+      settings: { ...FLOAT_DEFAULT_SETTINGS, position: { ...FLOAT_DEFAULT_SETTINGS.position } },
+      status: null,
+      loaded: false,
+      error: null,
+    }
+
+    try {
+      const cached = readLocalJSON(FLOAT_CACHE_KEY, null)
+      if (cached && typeof cached === 'object') {
+        floatSnapshot.settings = {
+          ...FLOAT_DEFAULT_SETTINGS,
+          ...cached,
+          position: { ...FLOAT_DEFAULT_SETTINGS.position, ...(cached.position ?? {}) },
+        }
+      }
+    } catch {
+      // A missing/unreadable cache is fine; the Host copy follows immediately.
+    }
+
+    const floatListeners = new Set()
+    // Guards against an older save response (or an in-flight 60s refresh)
+    // overwriting a newer optimistic setting.
+    let floatSaveSeq = 0
+    let floatPendingSaves = 0
+
+    function emitFloat() {
+      for (const listener of [...floatListeners]) {
+        try { listener() } catch { /* one bad subscriber must not break the rest */ }
+      }
+    }
+
+    function setFloat(patch) {
+      floatSnapshot = { ...floatSnapshot, ...patch }
+      if (patch.settings) writeLocalJSON(FLOAT_CACHE_KEY, patch.settings)
+      emitFloat()
+    }
+
+    function useFloatSnapshot() {
+      const [, force] = useState(0)
+      useEffect(() => {
+        const listener = () => force((value) => value + 1)
+        floatListeners.add(listener)
+        return () => { floatListeners.delete(listener) }
+      }, [])
+      return floatSnapshot
+    }
+
+    /** Re-render the avatar/settings copy when the active locale changes. */
+    function useFloatLocale() {
+      const [, force] = useState(0)
+      useEffect(() => {
+        let unsubscribe = () => {}
+        try {
+          unsubscribe = floatLocaleSubscribe(() => force((value) => value + 1))
+        } catch {
+          // Locale subscription is optional; the fallback copy still renders.
+        }
+        return () => {
+          try { unsubscribe() } catch { /* ignore */ }
+        }
+      }, [])
+    }
+
+    /**
+     * Small fetch helper for the avatar routes. A hung request must not leave
+     * `floatPendingSaves` pinned forever (which would disable the Settings
+     * retry button), so every avatar request gets a bounded lifetime.
+     */
+    async function floatFetchJSON(url, options = {}, timeoutMs = 8000) {
+      const controller = typeof AbortController === 'undefined' ? undefined : new AbortController()
+      const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller?.signal,
+        })
+        return await response.json()
+      } finally {
+        if (timer) clearTimeout(timer)
+      }
+    }
+
+    async function loadFloatData() {
+      // A save owns the optimistic state until its response lands.
+      if (floatPendingSaves > 0) return
+      const seqAtStart = floatSaveSeq
+      try {
+        const body = await floatFetchJSON(`${API}/float`, { credentials: 'same-origin' })
+        // A save started while this GET was in flight: its optimistic state is
+        // newer than the snapshot we just received.
+        if (seqAtStart !== floatSaveSeq || floatPendingSaves > 0) return
+        if (!body?.ok) {
+          setFloat({ error: body?.error ?? floatTranslate('settings.readError') })
+          return
+        }
+        setFloat({
+          settings: {
+            ...FLOAT_DEFAULT_SETTINGS,
+            ...(body.settings ?? {}),
+            position: { ...FLOAT_DEFAULT_SETTINGS.position, ...(body.settings?.position ?? {}) },
+          },
+          status: body.status ?? null,
+          loaded: true,
+          error: null,
+        })
+      } catch (error) {
+        if (seqAtStart !== floatSaveSeq || floatPendingSaves > 0) return
+        setFloat({ error: String(error?.message ?? error) })
+      }
+    }
+
+    async function saveFloatSettings(patch) {
+      const seq = ++floatSaveSeq
+      const stale = () => seq !== floatSaveSeq
+      const previous = floatSnapshot.settings
+      const next = {
+        ...previous,
+        ...patch,
+        position: { ...previous.position, ...(patch.position ?? {}) },
+      }
+      setFloat({ settings: next, error: null })
+      floatPendingSaves += 1
+      try {
+        const body = await floatFetchJSON(`${API}/float/settings`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ settings: patch }),
+        }, 10000)
+        if (!body?.ok) throw new Error(body?.error ?? floatTranslate('settings.save.error'))
+        if (stale()) return { ok: true, stale: true }
+        setFloat({
+          settings: {
+            ...FLOAT_DEFAULT_SETTINGS,
+            ...(body.settings ?? {}),
+            position: { ...FLOAT_DEFAULT_SETTINGS.position, ...(body.settings?.position ?? {}) },
+          },
+          error: null,
+        })
+        return { ok: true }
+      } catch (error) {
+        if (!stale()) setFloat({ settings: previous })
+        return { ok: false, error: String(error?.message ?? error), stale: stale() }
+      } finally {
+        floatPendingSaves = Math.max(0, floatPendingSaves - 1)
+      }
+    }
+
+    const floatClamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+    function floatPlacement(position, size, viewport) {
+      const margin = 10
+      const maxX = Math.max(1, viewport.w - size - margin * 2)
+      const maxY = Math.max(1, viewport.h - size - margin * 2)
+      const x = floatClamp(Number(position?.x ?? FLOAT_DEFAULT_SETTINGS.position.x), 0, 1)
+      const y = floatClamp(Number(position?.y ?? FLOAT_DEFAULT_SETTINGS.position.y), 0, 1)
+      return {
+        left: margin + Math.round(x * maxX),
+        top: margin + Math.round(y * maxY),
+        margin,
+        maxX,
+        maxY,
+      }
+    }
+
+    /** Place a card/bubble beside the avatar, flipping above near the bottom. */
+    function floatPopoverStyle(anchor, size, viewport, width) {
+      const gap = 10
+      const placeAbove = anchor.top > viewport.h * 0.5
+      const left = floatClamp(
+        anchor.left + size / 2 - width / 2,
+        10,
+        Math.max(10, viewport.w - width - 10),
+      )
+      if (placeAbove) {
+        return {
+          left,
+          width,
+          bottom: Math.max(10, viewport.h - anchor.top + gap),
+          maxHeight: Math.max(140, anchor.top - gap - 12),
+        }
+      }
+      return {
+        left,
+        width,
+        top: Math.min(viewport.h - 12, anchor.top + size + gap),
+        maxHeight: Math.max(140, viewport.h - (anchor.top + size + gap) - 12),
+      }
+    }
+
+    function floatInQuietHours(settings, date = new Date()) {
+      if (!settings.quietHoursEnabled) return false
+      const minutes = date.getHours() * 60 + date.getMinutes()
+      const parse = (value) => {
+        const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(value ?? ''))
+        return match ? Number(match[1]) * 60 + Number(match[2]) : null
+      }
+      const start = parse(settings.quietStart)
+      const end = parse(settings.quietEnd)
+      if (start === null || end === null || start === end) return false
+      return start < end
+        ? minutes >= start && minutes < end
+        : minutes >= start || minutes < end
+    }
+
+    let floatTipCursor = 0
+
+    /**
+     * Aggregate-only reminder choice. It looks at record COUNTS and active goal
+     * codes; it never reads a measurement value, a condition tag, or a target
+     * gap, so a reminder can never become a diagnosis or medication cue.
+     */
+    function floatReminder(status) {
+      if (!status || status.memberCount === 0) return 'tip.noMembers'
+      const counts = status.counts ?? {}
+      if ((status.todayRecordCount ?? 0) === 0) return 'tip.record'
+      const lean = (status.activeGoals ?? []).some((goal) => goal.code === 'lean_muscle')
+      if (lean) {
+        if (!counts.training) return 'tip.training'
+        if (!counts.protein) return 'tip.protein'
+        if (!counts.sleep) return 'tip.sleep'
+      }
+      if (floatTipCursor % 5 === 4) {
+        floatTipCursor += 1
+        return 'tip.recorded'
+      }
+      const tips = ['tip.water', 'tip.stretch', 'tip.eyes', 'tip.breath']
+      const key = tips[floatTipCursor % tips.length]
+      floatTipCursor += 1
+      return key
+    }
+
+    function floatNotify(text, name) {
+      try {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+        const notice = new Notification(floatText('notification.title', { name }), {
+          body: text,
+          tag: 'dsh-health-float',
+          silent: true,
+        })
+        setTimeout(() => { try { notice.close() } catch { /* ignore */ } }, 9000)
+      } catch {
+        // Notifications are optional; a failure never affects the avatar.
+      }
+    }
+
+    /**
+     * Keep one bad render from taking down the frame-wide overlay or the
+     * Settings page. The avatar simply disappears; the settings page says it
+     * could not load instead of blanking the whole panel.
+     */
+    class FloatBoundary extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = { error: null }
+      }
+
+      static getDerivedStateFromError(error) {
+        return { error }
+      }
+
+      componentDidCatch(error, info) {
+        console.error('[dsh-health] floating avatar error', error, info)
+      }
+
+      render() {
+        if (this.state.error) return this.props.fallback ?? null
+        return this.props.children
+      }
+    }
+
+    /**
+     * Original mascot artwork: a jade "health bean" with a heart badge and a
+     * leaf sprout. Fixed colors belong to the artwork; surrounding surfaces use
+     * the host theme tokens.
+     */
+    function HealthAvatar({ mood = 'idle', variant = 'bean' }) {
+      const sleeping = mood === 'sleep'
+      const reminding = mood === 'remind'
+      const palette = FLOAT_AVATAR_PALETTES[variant] ?? FLOAT_AVATAR_PALETTES.bean
+      const [ids] = useState(() => {
+        floatAvatarSeq += 1
+        const suffix = `dshhFloat${floatAvatarSeq}`
+        return { body: `${suffix}Body`, leaf: `${suffix}Leaf`, glow: `${suffix}Glow` }
+      })
+      return h('svg', { viewBox: '0 0 96 96', className: 'dshh-float-art', 'aria-hidden': true },
+        h('defs', {},
+          h('linearGradient', { id: ids.body, x1: '0', y1: '0', x2: '1', y2: '1' },
+            h('stop', { offset: '0%', stopColor: palette.body[0] }),
+            h('stop', { offset: '58%', stopColor: palette.body[1] }),
+            h('stop', { offset: '100%', stopColor: palette.body[2] })),
+          palette.leaf && h('linearGradient', { id: ids.leaf, x1: '0', y1: '1', x2: '1', y2: '0' },
+            h('stop', { offset: '0%', stopColor: palette.leaf[0] }),
+            h('stop', { offset: '100%', stopColor: palette.leaf[1] })),
+          h('radialGradient', { id: ids.glow, cx: '50%', cy: '40%', r: '60%' },
+            h('stop', { offset: '0%', stopColor: '#ffffff', stopOpacity: '0.55' }),
+            h('stop', { offset: '100%', stopColor: '#ffffff', stopOpacity: '0' }))),
+        h('ellipse', { cx: '48', cy: '87', rx: '25', ry: '4.5', fill: '#0f172a', opacity: sleeping ? '0.07' : '0.15' }),
+        h('g', { className: 'dshh-float-body' },
+          palette.rays && h('g', { stroke: '#F59E0B', strokeWidth: '3.2', strokeLinecap: 'round' },
+            h('path', { d: 'M48 3 L48 12' }),
+            h('path', { d: 'M26 10 L31 17' }),
+            h('path', { d: 'M70 10 L65 17' }),
+            h('path', { d: 'M12 42 L21 45' }),
+            h('path', { d: 'M84 42 L75 45' }),
+            h('path', { d: 'M20 22 L26 27' }),
+            h('path', { d: 'M76 22 L70 27' })),
+          palette.leaf && h(React.Fragment, null,
+            h('path', { d: 'M48 23 L48 12', stroke: '#15803D', strokeWidth: '3.2', strokeLinecap: 'round' }),
+            h('path', { d: 'M48 17 C40 17 35 12 36 5 C43 5 48 10 48 17 Z', fill: `url(#${ids.leaf})` }),
+            h('path', { d: 'M48 14 C56 14 61 9 60 2 C53 2 48 7 48 14 Z', fill: `url(#${ids.leaf})`, opacity: '0.92' })),
+          h('path', {
+            d: 'M48 22 C65 22 79 34 79 53 C79 71 66 84 48 84 C30 84 17 71 17 53 C17 34 31 22 48 22 Z',
+            fill: `url(#${ids.body})`,
+            stroke: '#F8FAFC',
+            strokeWidth: '2.4',
+          }),
+          h('ellipse', { cx: '41', cy: '38', rx: '15', ry: '10', fill: `url(#${ids.glow})` }),
+          palette.headband && h('g', {},
+            h('path', {
+              d: 'M24 35 Q48 28 72 35 L71 41 Q48 34 25 41 Z',
+              fill: '#DC2626',
+              stroke: '#FFFFFF',
+              strokeWidth: '1.2',
+            }),
+            h('path', { d: 'M70 38 L79 33 L78 43 Z', fill: '#DC2626', stroke: '#FFFFFF', strokeWidth: '1.2' })),
+          variant === 'muscle' && !sleeping && h('g', { stroke: '#7C2D12', strokeWidth: '2', strokeLinecap: 'round' },
+            h('path', { d: 'M30 39 L38 41' }),
+            h('path', { d: 'M66 39 L58 41' })),
+          sleeping
+            ? h('g', { stroke: '#123B37', strokeWidth: '2.6', strokeLinecap: 'round', fill: 'none' },
+              h('path', { d: 'M32 46 q4 3 8 0' }),
+              h('path', { d: 'M56 46 q4 3 8 0' }))
+            : h('g', {},
+              h('circle', { cx: '36', cy: '45', r: reminding ? '3.9' : '3.4', fill: '#123B37' }),
+              h('circle', { cx: '60', cy: '45', r: reminding ? '3.9' : '3.4', fill: '#123B37' }),
+              h('circle', { cx: '37.2', cy: '43.8', r: '1.15', fill: '#FFFFFF' }),
+              h('circle', { cx: '61.2', cy: '43.8', r: '1.15', fill: '#FFFFFF' })),
+          h('ellipse', { cx: '28.5', cy: '53', rx: '4.2', ry: '2.5', fill: '#FF9F9A', opacity: '0.72' }),
+          h('ellipse', { cx: '67.5', cy: '53', rx: '4.2', ry: '2.5', fill: '#FF9F9A', opacity: '0.72' }),
+          h('path', { d: 'M43 54 q5 4 10 0', fill: 'none', stroke: '#123B37', strokeWidth: '2.2', strokeLinecap: 'round' }),
+          h('path', {
+            d: 'M48 79 C48 79 37 71 37 64.5 C37 59.5 43.5 57.5 48 62.5 C52.5 57.5 59 59.5 59 64.5 C59 71 48 79 48 79 Z',
+            fill: '#FF6B6B',
+            stroke: '#FFFFFF',
+            strokeWidth: '1.6',
+          }),
+          h('path', {
+            d: 'M18 57 q-7 1 -9 6',
+            fill: 'none',
+            stroke: palette.arm,
+            strokeWidth: palette.armWidth,
+            strokeLinecap: 'round',
+          }),
+          h('path', {
+            d: 'M78 55 q8 -3 9 -9',
+            fill: 'none',
+            stroke: palette.arm,
+            strokeWidth: palette.armWidth,
+            strokeLinecap: 'round',
+          }),
+          sleeping && h('text', { x: '72', y: '26', fontSize: '11', fontWeight: '700', fill: '#94A3B8' }, 'z'),
+        ),
+      )
+    }
+
+    function floatDisplayName(settings) {
+      return String(settings?.name ?? '').trim() || FLOAT_DEFAULT_SETTINGS.name
+    }
+
+    function floatUsesImage(settings) {
+      return Boolean(settings?.avatarImage) || (settings?.avatarStyle ?? 'portrait') === 'portrait'
+    }
+
+    /** Render the uploaded image or the portrait when present, otherwise the built-in SVG. */
+    function floatAvatarNode(settings, mood) {
+      if (settings?.avatarImage) {
+        return h('img', {
+          className: 'dshh-float-art dshh-float-custom',
+          src: settings.avatarImage,
+          alt: '',
+          draggable: false,
+        })
+      }
+      if ((settings?.avatarStyle ?? 'portrait') === 'portrait') {
+        return h('img', {
+          className: 'dshh-float-art dshh-float-custom',
+          src: AVATAR_ART,
+          alt: '',
+          draggable: false,
+        })
+      }
+      return h(HealthAvatar, { mood, variant: settings?.avatarStyle ?? 'bean' })
+    }
+
+    function HealthFloat() {
+      const snapshot = useFloatSnapshot()
+      useFloatLocale()
+      const settings = snapshot.settings ?? FLOAT_DEFAULT_SETTINGS
+      const displayName = floatDisplayName(settings)
+      const usingImage = floatUsesImage(settings)
+      const size = FLOAT_SIZE_PX[settings.size] ?? FLOAT_SIZE_PX.medium
+      const [viewport, setViewport] = useState(() => ({
+        w: typeof window === 'undefined' ? 1200 : window.innerWidth,
+        h: typeof window === 'undefined' ? 800 : window.innerHeight,
+      }))
+      const [pos, setPos] = useState(() => ({
+        x: Number(settings.position?.x ?? FLOAT_DEFAULT_SETTINGS.position.x),
+        y: Number(settings.position?.y ?? FLOAT_DEFAULT_SETTINGS.position.y),
+      }))
+      const posRef = useRef(pos)
+      const [dragging, setDragging] = useState(false)
+      const [cardOpen, setCardOpen] = useState(false)
+      const [bubble, setBubble] = useState(null)
+      const [mood, setMood] = useState('idle')
+      const dragRef = useRef(null)
+      const clickTimer = useRef(null)
+      const bubbleTimer = useRef(null)
+      const positionTimer = useRef(null)
+      const snoozeUntil = useRef(0)
+      const greetedRef = useRef(false)
+      const statusRef = useRef(snapshot.status)
+      const settingsRef = useRef(settings)
+      const cardOpenRef = useRef(cardOpen)
+      statusRef.current = snapshot.status
+      settingsRef.current = settings
+      cardOpenRef.current = cardOpen
+
+      useEffect(() => {
+        const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
+        window.addEventListener('resize', onResize)
+        return () => window.removeEventListener('resize', onResize)
+      }, [])
+
+      // A reset from the Settings page (or another window) moves the avatar.
+      // A stale GET response is discarded by loadFloatData's sequence guard,
+      // so this effect can follow every position change while not dragging.
+      useEffect(() => {
+        if (dragRef.current) return
+        const next = {
+          x: Number(settings.position?.x ?? FLOAT_DEFAULT_SETTINGS.position.x),
+          y: Number(settings.position?.y ?? FLOAT_DEFAULT_SETTINGS.position.y),
+        }
+        posRef.current = next
+        setPos(next)
+      }, [settings.position?.x, settings.position?.y])
+
+      // Poll even while the avatar is hidden: another window may re-enable it,
+      // and a disabled avatar must not need a page reload to come back.
+      useEffect(() => {
+        let cancelled = false
+        const refresh = () => { if (!cancelled) loadFloatData() }
+        refresh()
+        const timer = setInterval(refresh, 60000)
+        window.addEventListener('dsh-health:changed', refresh)
+        return () => {
+          cancelled = true
+          clearInterval(timer)
+          window.removeEventListener('dsh-health:changed', refresh)
+        }
+      }, [])
+
+      useEffect(() => {
+        if (!settings.enabled || !settings.remindersEnabled || greetedRef.current) return undefined
+        greetedRef.current = true
+        const timer = setTimeout(() => {
+          if (cardOpenRef.current) return
+          if (floatInQuietHours(settingsRef.current)) return
+          showBubble(floatText('tip.greeting', { name: floatDisplayName(settingsRef.current) }))
+        }, 3500)
+        return () => clearTimeout(timer)
+      }, [settings.enabled, settings.remindersEnabled])
+
+      useEffect(() => {
+        if (settings.enabled && settings.remindersEnabled && floatInQuietHours(settings)) {
+          setMood('sleep')
+        } else {
+          setMood((current) => (current === 'sleep' ? 'idle' : current))
+        }
+      }, [settings.enabled, settings.remindersEnabled, settings.quietHoursEnabled, settings.quietStart, settings.quietEnd])
+
+      useEffect(() => {
+        if (!settings.enabled || !settings.remindersEnabled) return undefined
+        const minutes = Math.max(5, Number(settings.intervalMinutes) || 45)
+        const timer = setInterval(() => {
+          if (Date.now() < snoozeUntil.current) return
+          if (cardOpenRef.current) return
+          if (floatInQuietHours(settingsRef.current)) {
+            setMood('sleep')
+            return
+          }
+          const text = floatTranslate(floatReminder(statusRef.current))
+          showBubble(text)
+          if (settingsRef.current.desktopNotifications) {
+            floatNotify(text, floatDisplayName(settingsRef.current))
+          }
+        }, minutes * 60000)
+        return () => clearInterval(timer)
+      }, [
+        settings.enabled,
+        settings.remindersEnabled,
+        settings.intervalMinutes,
+        settings.quietHoursEnabled,
+        settings.quietStart,
+        settings.quietEnd,
+      ])
+
+      useEffect(() => () => {
+        if (clickTimer.current) clearTimeout(clickTimer.current)
+        if (bubbleTimer.current) clearTimeout(bubbleTimer.current)
+        if (positionTimer.current) clearTimeout(positionTimer.current)
+      }, [])
+
+      function showBubble(text) {
+        setCardOpen(false)
+        setBubble({ text })
+        setMood('remind')
+        if (bubbleTimer.current) clearTimeout(bubbleTimer.current)
+        const seconds = Math.max(0, Number(settingsRef.current.bubbleSeconds) || 0)
+        if (seconds > 0) {
+          bubbleTimer.current = setTimeout(() => {
+            setBubble(null)
+            setMood('idle')
+          }, seconds * 1000)
+        }
+      }
+
+      function dismissBubble() {
+        if (bubbleTimer.current) clearTimeout(bubbleTimer.current)
+        setBubble(null)
+        setMood('idle')
+      }
+
+      function persistPosition(delay = 350) {
+        if (positionTimer.current) clearTimeout(positionTimer.current)
+        positionTimer.current = setTimeout(() => {
+          positionTimer.current = null
+          saveFloatSettings({ position: posRef.current })
+        }, delay)
+      }
+
+      function beginDrag(event) {
+        if (event.pointerType === 'mouse' && event.button !== 0) return
+        event.preventDefault()
+        // A pending single-click must not fire after the user starts dragging.
+        if (clickTimer.current) {
+          clearTimeout(clickTimer.current)
+          clickTimer.current = null
+        }
+        const base = floatPlacement(posRef.current, size, viewport)
+        dragRef.current = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          baseLeft: base.left,
+          baseTop: base.top,
+          margin: base.margin,
+          moved: false,
+          size,
+          viewport,
+        }
+        try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* ignore */ }
+        setDragging(true)
+      }
+
+      function moveDrag(event) {
+        const drag = dragRef.current
+        if (!drag || drag.pointerId !== event.pointerId) return
+        const dx = event.clientX - drag.startX
+        const dy = event.clientY - drag.startY
+        if (!drag.moved && Math.hypot(dx, dy) > 4) drag.moved = true
+        if (!drag.moved) return
+        const maxX = Math.max(1, drag.viewport.w - drag.size - drag.margin * 2)
+        const maxY = Math.max(1, drag.viewport.h - drag.size - drag.margin * 2)
+        const next = {
+          x: floatClamp((drag.baseLeft + dx - drag.margin) / maxX, 0, 1),
+          y: floatClamp((drag.baseTop + dy - drag.margin) / maxY, 0, 1),
+        }
+        posRef.current = next
+        setPos(next)
+        setCardOpen(false)
+      }
+
+      function endDrag(event) {
+        const drag = dragRef.current
+        if (!drag || drag.pointerId !== event.pointerId) return
+        dragRef.current = null
+        setDragging(false)
+        try { event.currentTarget.releasePointerCapture(event.pointerId) } catch { /* ignore */ }
+        if (drag.moved) {
+          // Persist immediately: if the user disables/hides the avatar right
+          // after a drag, the drag result must still reach the Host.
+          if (clickTimer.current) {
+            clearTimeout(clickTimer.current)
+            clickTimer.current = null
+          }
+          saveFloatSettings({ position: posRef.current })
+          return
+        }
+        // Distinguish a click from a double-click: the 300ms timer is cancelled
+        // by openFromAvatar() when the second click arrives.
+        if (clickTimer.current) return
+        clickTimer.current = setTimeout(() => {
+          clickTimer.current = null
+          dismissBubble()
+          setCardOpen((open) => !open)
+        }, 300)
+      }
+
+      function cancelDrag() {
+        dragRef.current = null
+        setDragging(false)
+      }
+
+      function openFromAvatar() {
+        if (clickTimer.current) {
+          clearTimeout(clickTimer.current)
+          clickTimer.current = null
+        }
+        dismissBubble()
+        setCardOpen(false)
+        openHealthPanel()
+      }
+
+      function onAvatarKeyDown(event) {
+        if (event.key === 'Escape') {
+          setCardOpen(false)
+          dismissBubble()
+          return
+        }
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          dismissBubble()
+          setCardOpen((open) => !open)
+          return
+        }
+        const step = 0.03
+        let dx = 0
+        let dy = 0
+        if (event.key === 'ArrowLeft') dx = -step
+        else if (event.key === 'ArrowRight') dx = step
+        else if (event.key === 'ArrowUp') dy = -step
+        else if (event.key === 'ArrowDown') dy = step
+        if (dx === 0 && dy === 0) return
+        event.preventDefault()
+        const next = {
+          x: floatClamp(posRef.current.x + dx, 0, 1),
+          y: floatClamp(posRef.current.y + dy, 0, 1),
+        }
+        posRef.current = next
+        setPos(next)
+        persistPosition()
+      }
+
+      if (!settings.enabled) return null
+
+      const status = snapshot.status
+      let statusText = floatTranslate('status.unknown')
+      if (status) {
+        if (status.memberCount === 0) {
+          statusText = floatTranslate('status.noMembers')
+        } else {
+          // The count is family-wide, so do not attribute it to one member
+          // when the household has more than one profile.
+          statusText = status.memberCount === 1
+            ? floatText('status.today', {
+              name: status.primaryMember?.name ?? '',
+              count: status.todayRecordCount ?? 0,
+            })
+            : floatText('status.familyToday', { count: status.todayRecordCount ?? 0 })
+          const goalCount = (status.activeGoals ?? []).length
+          if (goalCount > 0) statusText += ` · ${floatText('status.goals', { count: goalCount })}`
+        }
+      }
+
+      const dotColor = !status || status.memberCount === 0
+        ? 'var(--dsw-alias-state-idle-primary)'
+        : (status.todayRecordCount ?? 0) === 0
+          ? 'var(--dsw-alias-state-idle-primary)'
+          : 'var(--dsw-alias-brand-primary)'
+
+      const placement = floatPlacement(pos, size, viewport)
+      const cardWidth = Math.min(300, Math.max(160, viewport.w - 24))
+      const bubbleWidth = Math.min(270, Math.max(150, viewport.w - 24))
+
+      return h(React.Fragment, null,
+        h('style', { 'data-dsh-health-float': 'styles' }, FLOAT_CSS),
+        h('div', { className: 'dshh-float-root' },
+          h('div', {
+            className: 'dshh-float'
+              + (dragging ? ' is-dragging' : '')
+              + (mood === 'sleep' ? ' is-sleeping' : ''),
+            style: { left: placement.left, top: placement.top, width: size, height: size },
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': floatText('avatar.label', { name: displayName }),
+            'aria-expanded': cardOpen ? 'true' : 'false',
+            'aria-haspopup': 'dialog',
+            title: floatText('avatar.label', { name: displayName }),
+            onPointerDown: beginDrag,
+            onPointerMove: moveDrag,
+            onPointerUp: endDrag,
+            onPointerCancel: cancelDrag,
+            onDoubleClick: openFromAvatar,
+            onKeyDown: onAvatarKeyDown,
+          },
+            h('div', { className: 'dshh-float-inner' }, floatAvatarNode(settings, mood)),
+            h('span', { className: 'dshh-float-dot', style: { background: dotColor }, title: statusText }),
+            mood === 'remind' && h('span', { className: 'dshh-float-bang', 'aria-hidden': true }, '!'),
+            mood === 'sleep' && usingImage && h('span', {
+              className: 'dshh-float-sleep',
+              'aria-hidden': true,
+            }, 'z'),
+          ),
+          cardOpen && h('div', {
+          className: 'dshh-float-card',
+          style: floatPopoverStyle(placement, size, viewport, cardWidth),
+          role: 'dialog',
+          'aria-label': floatText('card.title', { name: displayName }),
+          onPointerDown: (event) => event.stopPropagation(),
+        },
+          h('div', { className: 'dshh-float-card-head' },
+            h('div', { className: 'dshh-float-card-avatar' }, floatAvatarNode(settings, 'idle')),
+            h('div', { className: 'dshh-float-card-title' }, floatText('card.title', { name: displayName })),
+            h('button', {
+              type: 'button',
+              className: 'dshh-float-iconbtn',
+              onClick: () => setCardOpen(false),
+              'aria-label': floatTranslate('card.close'),
+            }, '×')),
+          h('div', { className: 'dshh-float-card-status' }, statusText),
+          h('div', { className: 'dshh-float-card-text' }, floatTranslate('card.tip')),
+          h('div', { className: 'dshh-float-card-actions' },
+            h('button', {
+              type: 'button',
+              className: 'dshh-btn dshh-btn-primary',
+              onClick: () => { setCardOpen(false); openHealthPanel() },
+            }, floatTranslate('card.open')),
+            h('button', {
+              type: 'button',
+              className: 'dshh-btn',
+              onClick: () => {
+                snoozeUntil.current = Date.now() + 60 * 60 * 1000
+                showBubble(floatTranslate('tip.snoozed'))
+              },
+            }, floatTranslate('card.snooze'))),
+          h('div', { className: 'dshh-float-card-hint' }, floatTranslate('card.configHint')),
+        ),
+        bubble && h('div', {
+          className: 'dshh-float-bubble',
+          style: floatPopoverStyle(placement, size, viewport, bubbleWidth),
+          role: 'status',
+          onPointerDown: (event) => event.stopPropagation(),
+        },
+          h('div', { className: 'dshh-float-bubble-text' }, bubble.text),
+          h('button', {
+            type: 'button',
+            className: 'dshh-float-iconbtn',
+            onClick: dismissBubble,
+            'aria-label': floatTranslate('bubble.close'),
+          }, '×')),
+        ),
+      )
+    }
+
+    // ------------------------------------------------------- float settings
+    // A dedicated `settings.section`, so DSH Settings is the one place that
+    // configures the avatar; the page is independent from the health panel.
+
+    function FloatSwitch({ checked, onChange, label }) {
+      return h('button', {
+        type: 'button',
+        role: 'switch',
+        'aria-checked': checked ? 'true' : 'false',
+        'aria-label': label,
+        className: 'dshh-switch' + (checked ? ' is-on' : ''),
+        onClick: () => onChange(!checked),
+      }, h('span', { className: 'dshh-switch-thumb' }))
+    }
+
+    function FloatRow({ title, desc, children }) {
+      return h('div', { className: 'dshh-set-row' },
+        h('div', { className: 'dshh-set-copy' },
+          h('div', { className: 'dshh-set-label' }, title),
+          desc && h('div', { className: 'dshh-set-desc' }, desc)),
+        h('div', { className: 'dshh-set-control' }, children))
+    }
+
+    function FloatSettingsSection() {
+      const snapshot = useFloatSnapshot()
+      useFloatLocale()
+      const settings = snapshot.settings ?? FLOAT_DEFAULT_SETTINGS
+      const displayName = floatDisplayName(settings)
+      const [nameDraft, setNameDraft] = useState(displayName)
+      const [saveState, setSaveState] = useState('idle')
+      const [message, setMessage] = useState('')
+      const saveTimer = useRef(null)
+      const messageTimer = useRef(null)
+      const nameEditing = useRef(false)
+      const fileInput = useRef(null)
+
+      useEffect(() => {
+        loadFloatData()
+      }, [])
+
+      useEffect(() => {
+        if (!nameEditing.current) setNameDraft(displayName)
+      }, [displayName])
+
+      useEffect(() => () => {
+        if (saveTimer.current) clearTimeout(saveTimer.current)
+        if (messageTimer.current) clearTimeout(messageTimer.current)
+      }, [])
+
+      function flashMessage(text) {
+        setMessage(String(text ?? ''))
+        if (messageTimer.current) clearTimeout(messageTimer.current)
+        messageTimer.current = setTimeout(() => setMessage(''), 4200)
+      }
+
+      function apply(patch, onSuccess) {
+        setSaveState('saving')
+        saveFloatSettings(patch).then((result) => {
+          if (result.ok) {
+            setSaveState('saved')
+            if (saveTimer.current) clearTimeout(saveTimer.current)
+            saveTimer.current = setTimeout(() => setSaveState('idle'), 1800)
+            if (typeof onSuccess === 'function' && !result.stale) onSuccess()
+          } else if (!result.stale) {
+            setSaveState('error')
+            flashMessage(result.error ?? floatTranslate('settings.save.error'))
+          }
+        })
+      }
+
+      async function toggleNotifications(next) {
+        if (!next) {
+          apply({ desktopNotifications: false })
+          return
+        }
+        if (typeof Notification === 'undefined') {
+          flashMessage(floatTranslate('settings.notifyUnsupported'))
+          return
+        }
+        let permission = Notification.permission
+        if (permission === 'default') {
+          try { permission = await Notification.requestPermission() } catch { permission = 'denied' }
+        }
+        if (permission !== 'granted') {
+          flashMessage(floatTranslate('settings.notifyDenied'))
+          return
+        }
+        apply({ desktopNotifications: true })
+      }
+
+      function resetPosition() {
+        apply({ position: { ...FLOAT_DEFAULT_SETTINGS.position } }, () => {
+          flashMessage(floatTranslate('settings.positionReset'))
+        })
+      }
+
+      function commitName() {
+        const next = Array.from(
+          String(nameDraft ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim(),
+        ).slice(0, 24).join('') || FLOAT_DEFAULT_SETTINGS.name
+        setNameDraft(next)
+        // Compare against the live store so blur + clicking the Save button
+        // cannot submit the same name twice.
+        if (next !== floatDisplayName(floatSnapshot.settings)) apply({ name: next })
+      }
+
+      function handleAvatarFile(event) {
+        const input = event.currentTarget
+        const file = input.files?.[0]
+        // Reset first so choosing the same file again still fires `change`.
+        input.value = ''
+        if (!file) return
+        if (!/^image\/(png|jpeg|webp|gif)$/i.test(file.type)) {
+          flashMessage(floatTranslate('settings.avatarBadType'))
+          return
+        }
+        if (file.size > FLOAT_AVATAR_MAX_BYTES) {
+          flashMessage(floatTranslate('settings.avatarTooLarge'))
+          return
+        }
+        if (typeof FileReader === 'undefined') {
+          flashMessage(floatTranslate('settings.avatarReadError'))
+          return
+        }
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = typeof reader.result === 'string' ? reader.result : ''
+          if (!result
+            || result.length > FLOAT_AVATAR_MAX_LENGTH
+            || !/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(result)) {
+            flashMessage(floatTranslate('settings.avatarReadError'))
+            return
+          }
+          apply({ avatarImage: result })
+        }
+        reader.onerror = () => flashMessage(floatTranslate('settings.avatarReadError'))
+        reader.readAsDataURL(file)
+      }
+
+      const intervalOptions = [...new Set([
+        ...FLOAT_INTERVALS,
+        Number(settings.intervalMinutes) || 45,
+      ])].sort((a, b) => a - b)
+      const bubbleOptions = [...new Set([
+        ...FLOAT_BUBBLE_SECONDS,
+        Number(settings.bubbleSeconds) || 0,
+      ])].sort((a, b) => a - b)
+
+      const saveLabel = saveState === 'saving'
+        ? floatTranslate('settings.save.saving')
+        : saveState === 'saved'
+          ? floatTranslate('settings.save.saved')
+          : saveState === 'error'
+            ? floatTranslate('settings.save.error')
+            : ''
+      const saveClass = 'dshh-set-save'
+        + (saveState === 'saved' ? ' is-saved' : '')
+        + (saveState === 'error' ? ' is-error' : '')
+      const avatarPreview = settings.avatarImage
+        ? h('img', { className: 'dshh-set-avatarimg', src: settings.avatarImage, alt: '' })
+        : settings.avatarStyle === 'portrait'
+          ? h('img', { className: 'dshh-set-avatarimg', src: AVATAR_ART, alt: '' })
+          : h('div', { className: 'dshh-set-avatarimg' },
+            h(HealthAvatar, { mood: 'idle', variant: settings.avatarStyle }))
+
+      return h('div', { className: 'dshh-set' },
+        h(Styles),
+        h('style', { 'data-dsh-health-float': 'styles' }, FLOAT_CSS),
+        h('div', { className: 'dshh-set-head' },
+          h('div', null,
+            h('h1', { className: 'dshh-set-title' }, floatTranslate('settings.title')),
+            h('p', { className: 'dshh-set-sub' }, floatText('settings.subtitle', { name: displayName }))),
+          h('div', { className: saveClass, role: 'status', 'aria-live': 'polite' }, saveLabel)),
+        !snapshot.loaded && !snapshot.error
+          && h('div', { className: 'dshh-set-desc' }, floatTranslate('settings.loading')),
+        (snapshot.error || message) && h('div', { className: 'dshh-set-error' },
+          snapshot.error && h('div', null,
+            `${floatTranslate('settings.readError')}：${snapshot.error}`),
+          message && h('div', null, message),
+          snapshot.error && h('button', {
+            type: 'button',
+            className: 'dshh-btn dshh-set-reset',
+            style: { marginTop: 8 },
+            onClick: () => loadFloatData(),
+          }, floatTranslate('settings.retry'))),
+
+        h('section', { className: 'dshh-set-card' },
+          h('div', { className: 'dshh-set-cardhead' }, floatTranslate('settings.identity')),
+          h(FloatRow, {
+            title: floatTranslate('settings.name'),
+            desc: floatTranslate('settings.nameHint'),
+          }, h('input', {
+            className: 'dshh-set-input',
+            type: 'text',
+            value: nameDraft,
+            maxLength: 24,
+            placeholder: FLOAT_DEFAULT_SETTINGS.name,
+            'aria-label': floatTranslate('settings.name'),
+            onFocus: () => { nameEditing.current = true },
+            onChange: (event) => setNameDraft(event.target.value),
+            onBlur: () => {
+              nameEditing.current = false
+              commitName()
+            },
+            onKeyDown: (event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                event.currentTarget.blur()
+              }
+            },
+          }), h('button', {
+            type: 'button',
+            className: 'dshh-btn dshh-set-reset',
+            onClick: commitName,
+          }, floatTranslate('settings.nameSave'))),
+          h('div', { className: 'dshh-set-row dshh-set-avatar-row' },
+            h('div', { className: 'dshh-set-avatarpreview' }, avatarPreview),
+            h('div', { className: 'dshh-set-avatarmain' },
+              h('div', { className: 'dshh-set-label' }, floatTranslate('settings.avatarStyle')),
+              h('div', {
+                className: 'dshh-set-seg',
+                role: 'group',
+                'aria-label': floatTranslate('settings.avatarStyle'),
+              }, FLOAT_AVATAR_STYLES.map((code) => h('button', {
+                key: code,
+                type: 'button',
+                className: 'dshh-set-segbtn'
+                  + (!settings.avatarImage && settings.avatarStyle === code ? ' is-active' : ''),
+                'aria-pressed': !settings.avatarImage && settings.avatarStyle === code,
+                onClick: () => apply({ avatarStyle: code, avatarImage: null }),
+              }, floatTranslate(`settings.avatarStyle.${code}`)))),
+              h('div', { className: 'dshh-set-avataractions' },
+                h('button', {
+                  type: 'button',
+                  className: 'dshh-btn',
+                  onClick: () => fileInput.current?.click(),
+                }, floatTranslate('settings.avatarUpload')),
+                settings.avatarImage && h('button', {
+                  type: 'button',
+                  className: 'dshh-btn',
+                  onClick: () => apply({ avatarImage: null }),
+                }, floatTranslate('settings.avatarRemove'))),
+              h('div', { className: 'dshh-set-desc' }, floatTranslate('settings.avatarHint')),
+              settings.avatarImage && h('div', { className: 'dshh-set-avatartag' },
+                floatTranslate('settings.avatarCustom')),
+              h('input', {
+                ref: fileInput,
+                type: 'file',
+                accept: 'image/png,image/jpeg,image/webp,image/gif',
+                style: { display: 'none' },
+                onChange: handleAvatarFile,
+              }),
+            )),
+        ),
+
+        h('section', { className: 'dshh-set-card' },
+          h('div', { className: 'dshh-set-cardhead' }, floatTranslate('settings.appearance')),
+          h(FloatRow, {
+            title: floatText('settings.show', { name: displayName }),
+            desc: floatText('settings.showHint', { name: displayName }),
+          }, h(FloatSwitch, {
+            checked: settings.enabled,
+            onChange: (next) => apply({ enabled: next }),
+            label: floatText('settings.show', { name: displayName }),
+          })),
+          h(FloatRow, {
+            title: floatTranslate('settings.size'),
+            desc: floatText('settings.sizeHint', { name: displayName }),
+          }, h('div', { className: 'dshh-set-seg', role: 'group', 'aria-label': floatTranslate('settings.size') },
+            FLOAT_SIZE_CODES.map((code) => h('button', {
+              key: code,
+              type: 'button',
+              className: 'dshh-set-segbtn' + (settings.size === code ? ' is-active' : ''),
+              'aria-pressed': settings.size === code,
+              onClick: () => apply({ size: code }),
+            }, floatTranslate(`settings.size.${code}`))))),
+          h(FloatRow, {
+            title: floatTranslate('settings.position'),
+            desc: floatText('settings.positionHint', { name: displayName }),
+          }, h('button', {
+            type: 'button',
+            className: 'dshh-btn dshh-set-reset',
+            onClick: resetPosition,
+          }, floatTranslate('settings.resetPosition')))),
+
+        h('section', { className: 'dshh-set-card' },
+          h('div', { className: 'dshh-set-cardhead' }, floatTranslate('settings.reminders')),
+          h(FloatRow, {
+            title: floatTranslate('settings.remindersEnabled'),
+            desc: floatTranslate('settings.remindersHint'),
+          }, h(FloatSwitch, {
+            checked: settings.remindersEnabled,
+            onChange: (next) => apply({ remindersEnabled: next }),
+            label: floatTranslate('settings.remindersEnabled'),
+          })),
+          h(FloatRow, {
+            title: floatTranslate('settings.interval'),
+            desc: floatTranslate('settings.intervalHint'),
+          }, h('select', {
+            className: 'dshh-set-select',
+            value: String(settings.intervalMinutes),
+            disabled: !settings.remindersEnabled,
+            'aria-label': floatTranslate('settings.interval'),
+            onChange: (event) => apply({ intervalMinutes: Number(event.target.value) }),
+          }, intervalOptions.map((minutes) => h('option', { key: minutes, value: String(minutes) },
+            floatText('settings.minutes', { n: minutes }))))),
+          h(FloatRow, {
+            title: floatTranslate('settings.bubble'),
+            desc: floatTranslate('settings.bubbleHint'),
+          }, h('select', {
+            className: 'dshh-set-select',
+            value: String(settings.bubbleSeconds),
+            disabled: !settings.remindersEnabled,
+            'aria-label': floatTranslate('settings.bubble'),
+            onChange: (event) => apply({ bubbleSeconds: Number(event.target.value) }),
+          }, bubbleOptions.map((seconds) => h('option', { key: seconds, value: String(seconds) },
+            seconds === 0
+              ? floatTranslate('settings.bubble.never')
+              : floatText('settings.seconds', { n: seconds }))))),
+          h(FloatRow, {
+            title: floatTranslate('settings.notify'),
+            desc: floatTranslate('settings.notifyHint'),
+          }, h(FloatSwitch, {
+            checked: settings.desktopNotifications,
+            onChange: toggleNotifications,
+            label: floatTranslate('settings.notify'),
+          }))),
+
+        h('section', { className: 'dshh-set-card' },
+          h('div', { className: 'dshh-set-cardhead' }, floatTranslate('settings.quiet')),
+          h(FloatRow, {
+            title: floatTranslate('settings.quietEnabled'),
+            desc: floatText('settings.quietHint', { name: displayName }),
+          }, h(FloatSwitch, {
+            checked: settings.quietHoursEnabled,
+            onChange: (next) => apply({ quietHoursEnabled: next }),
+            label: floatTranslate('settings.quietEnabled'),
+          })),
+          h(FloatRow, {
+            title: floatTranslate('settings.quietWindow'),
+          }, h('div', { className: 'dshh-set-times' },
+            h('span', null, floatTranslate('settings.quietStart')),
+            h('input', {
+              type: 'time',
+              className: 'dshh-set-time',
+              value: settings.quietStart,
+              disabled: !settings.quietHoursEnabled,
+              'aria-label': floatTranslate('settings.quietStart'),
+              onChange: (event) => {
+                if (event.target.value) apply({ quietStart: event.target.value })
+              },
+            }),
+            h('span', null, '—'),
+            h('span', null, floatTranslate('settings.quietEnd')),
+            h('input', {
+              type: 'time',
+              className: 'dshh-set-time',
+              value: settings.quietEnd,
+              disabled: !settings.quietHoursEnabled,
+              'aria-label': floatTranslate('settings.quietEnd'),
+              onChange: (event) => {
+                if (event.target.value) apply({ quietEnd: event.target.value })
+              },
+            })))),
+
+        h('p', { className: 'dshh-set-note' }, floatText('settings.disclaimer', { name: displayName })),
+      )
+    }
+
+    function SafeHealthFloat() {
+      return h(FloatBoundary, null, h(HealthFloat))
+    }
+
+    function SafeFloatSettingsSection() {
+      return h(FloatBoundary, {
+        fallback: h('div', { className: 'dshh-set' },
+          h(Styles),
+          h('style', { 'data-dsh-health-float': 'styles' }, FLOAT_CSS),
+          h('div', { className: 'dshh-set-error' }, floatTranslate('settings.readError'))),
+      }, h(FloatSettingsSection))
+    }
+
+    // ------------------------------------------------------------- register
+
     return {
-      inject: ['slots'],
+      inject: ['slots', 'layout', 'locale'],
       apply(ctx) {
+        // Register the avatar's own copy so the label thunk follows a locale
+        // switch and the page is readable in both shipped languages.
+        ctx.effect(() => {
+          let dispose = () => {}
+          try {
+            dispose = ctx.locale.register('dsh-health-float', {
+              zh: FLOAT_I18N.zh,
+              en: FLOAT_I18N.en,
+            })
+            floatTranslate = ctx.locale.bind('dsh-health-float')
+            floatLocaleSubscribe = (listener) => ctx.locale.subscribe(listener)
+          } catch (error) {
+            console.warn('[dsh-health] floating avatar locale registration failed', error)
+          }
+          return () => {
+            try { dispose() } catch { /* ignore */ }
+          }
+        })
+
+        openHealthPanel = () => {
+          try {
+            ctx.layout.selectPanel('dsh-health')
+          } catch (error) {
+            console.warn('[dsh-health] cannot open the health panel', error)
+          }
+        }
+
         ctx.slots.inject('sidebar.panellist', () =>
           ctx.slots.register(
             { name: 'sidebar.panellist', id: 'dsh-health', order: 20, label: () => '健康管理' },
@@ -6110,6 +10251,27 @@ window.__ModuleLoader__.load({
         )
         ctx.slots.inject('main', () =>
           ctx.slots.register({ name: 'main', key: 'dsh-health' }, SafeHealthPanel),
+        )
+        // Frame-wide floating layer: the avatar is draggable and click-through
+        // everywhere else, so it never blocks the host UI.
+        ctx.slots.inject('shell.overlay', () =>
+          ctx.slots.register(
+            { name: 'shell.overlay', id: 'dsh-health-float', order: 30 },
+            SafeHealthFloat,
+          ),
+        )
+        // Dedicated DSH Settings page (show/hide, reminders, quiet hours).
+        ctx.slots.inject('settings.section', () =>
+          ctx.slots.register(
+            {
+              name: 'settings.section',
+              id: 'dsh-health-float',
+              order: 55,
+              label: () => floatTranslate('settings.title'),
+              locale: 'dsh-health-float',
+            },
+            SafeFloatSettingsSection,
+          ),
         )
       },
     }

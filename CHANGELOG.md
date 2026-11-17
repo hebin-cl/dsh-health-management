@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.4.0 — 2026-11-17
+
+- **Little Muscle King (小肌霸)** — a draggable floating health buddy on the Web
+  panel with its own DSH Settings page: display name, built-in avatar or an
+  uploaded image, show/hide, size, saved position, reminder interval, quiet
+  hours, bubble duration and optional desktop notifications. It reads only
+  aggregate counts (records today, active goals) and never evaluates a value,
+  labels a disease or proposes treatment; its settings live in `float.json` and
+  are shared by every DSH Web window on this machine.
+- **Meal photos and vision estimation** — record breakfast / lunch / dinner /
+  snack with a photo; an image-capable model can propose kcal, protein and the
+  item list, and nothing is saved until the user confirms it. The estimate route
+  is automatic (agent default when it accepts images) or pinned to one
+  image-capable provider/model in the panel; the choice is stored in
+  `estimate.json`.
+- **Metabolic management redesign (代谢对账簿)** — behaviour accounts
+  (测 / 吃 / 动 / 睡) counted as deposits, an observation-only indicator
+  statement (waist, blood pressure, fasting glucose, TG, HDL-C, ...) against
+  population reference bands and doctor-set targets, a 12-week review cycle, a
+  weekly ledger and a copyable visit summary. No indicator is scored as a
+  diagnosis.
+- **Members** gain a height field (BMI derives from weight + height) and an
+  `unknown` risk level.
+- Carries the 1.3.2 compatibility fix (unknown metric codes and legacy photo
+  kinds no longer fail the panel) and the 1.3.1 host request gate.
+
 ## 1.3.2 — 2026-11-17
 
 - Reading a stored record whose metric code this build does not ship no longer

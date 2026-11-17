@@ -1,7 +1,7 @@
 {
   "name": "dsh-health-management",
-  "version": "1.3.2",
-  "description": "Family health records and management goals for DeepSeek Harness: metabolic monitoring plus a 12-week lean-muscle account (training, protein, sleep, water), weekly ledger, body-composition statement, progress photos, and a health archive. Records only; no diagnosis or medication advice.",
+  "version": "1.4.0",
+  "description": "Health management tracker for DeepSeek Harness: family metrics plus management goals (metabolic syndrome management and a 12-week lean-muscle season), a copyable visit summary, meal photos that can be estimated by a vision model, and Little Muscle King, a draggable floating health buddy with configurable reminders in DSH Settings. Records and descriptive statistics only; never diagnosis, training, nutrition or medication advice.",
   "type": "module",
   "license": "MIT",
   "author": "hebin-cl",
@@ -26,7 +26,10 @@
     "lean-muscle",
     "body-composition",
     "goals",
-    "photos"
+    "photos",
+    "meal",
+    "floating-widget",
+    "reminders"
   ],
   "engines": {
     "node": ">=22",
