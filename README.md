@@ -1,29 +1,46 @@
 # Health Management for DeepSeek Harness
 
+Local-only family health records and two management goals for DeepSeek Harness.
+
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-0B0D12?style=flat-square)](https://github.com/topics/dsh-plugin)
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
 [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
+[![release v1.3.1](https://img.shields.io/badge/release-v1.3.1-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
 
-A family health workspace for **DeepSeek Harness**: record measurements, manage goals, and see the gap between what you want to manage and what the data says — without turning the panel into a medical chart.
+<p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="Health Management for DeepSeek Harness cover" width="100%"></p>
 
-The flagship view is **Lean Account / 薄肌账户**: four behaviour accounts (training, protein, sleep, water), a 12-week season, a weekly ledger, and a body-composition statement that is **observation-only**. The plugin also ships a metabolic monitoring view, progress photos, a health archive, and agent tools for the same data.
+Record blood pressure, glucose, lipids, uric acid, weight, waist, body fat, sleep, training and more for up to eight family members. Two management goals are built in: **metabolic management** (core indicators — waist, blood pressure, fasting glucose, triglycerides, HDL-C, BMI — shown against reference bands with target gaps) and **Lean Account** (training, protein, sleep and water accounts in a 12-week season). Records and descriptive statistics stay on this machine — no diagnosis, treatment or medication advice.
 
-## What's new in 1.3.0
+## Install in 30 seconds
 
-- **Four focused tabs**: 概览 / 赛季 / 档案 / 发现.
-- **Season** is now its own section: hero, W4/W8/W12 checkpoints, weekly ledger, share card and squad entry.
-- **Archive** is the single home for **trends, photos and medical documents**, with counts and quick actions.
-- **Discover** ships a **Hangzhou Yuhang district pilot** with 10 public venues, search, filters, source links and local favourites — with open hours/fees marked "check on site".
-- **Local squad MVP**: invite-only behaviour leaderboard, opt-in, local-only; no remote service yet.
-- **Clear unit**: deposits are measured in **笔** (one account's one daily deposit); season time is **周**.
+```sh
+# GitHub source
+dsh plugin --profile <your-profile> add github:hebin-cl/dsh-health-management
+# release tarball
+dsh plugin --profile <your-profile> add https://github.com/hebin-cl/dsh-health-management/releases/latest/download/dsh-health-management.tgz
+```
 
-The squad and venue data are MVP/pilot features and are labelled as such in the UI. The squad store is local (`community.json`); venue data is curated from public sources and may change.
+Requires DeepSeek Harness `>=0.2.2-rc.1 <0.3.0` and Node 22+; refresh the Web UI after install.
 
-> Records and descriptive statistics only. Not a medical device. No diagnosis, treatment, medication, training-plan, recipe, or supplement advice. Reference ranges are population references, not personal targets. Always follow a clinician's advice.
+<p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/screenshots/01-overview.png" width="360"></p>
 
-![Overview](assets/screenshots/01-overview.png)
+Lean Account overview: four behaviour accounts, the weekly ledger and the body-composition statement.
 
-> The screenshot shows the visual system from the 1.2 baseline; 1.3 adds the season, archive and discover tabs. Updated captures will follow.
+> Records and descriptive statistics only; no diagnosis, treatment, medication, training-plan, recipe or supplement advice; reference ranges are population references, not personal targets.
+
+## What's new in 1.3.1
+
+- Panel routes now ask the host's own request gate (Host/Origin + browser login) before answering; refusals get the host's 401/403 and no data.
+- No data or storage change.
+
+**Also in 1.3.0**
+
+- Four focused tabs: 概览 / 赛季 / 档案 / 发现.
+- **Season** is its own section: hero, W4/W8/W12 checkpoints, weekly ledger, share card and squad entry.
+- **Archive** is the single home for trends, photos and medical documents.
+- **Discover** adds the Hangzhou Yuhang district pilot (10 venues), plus a local-only invite squad MVP.
+
+Squad and venue features are MVP/pilot and labelled as such in the UI.
 
 ## Features
 

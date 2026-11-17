@@ -1,28 +1,46 @@
 # 健康管理 · DeepSeek Harness 插件
 
+本地家庭健康记录插件，内置代谢与薄肌两个管理目标。
+
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-0B0D12?style=flat-square)](https://github.com/topics/dsh-plugin)
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
+[![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
+[![release v1.3.1](https://img.shields.io/badge/release-v1.3.1-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
 
-一个面向**家庭健康管理**的 DeepSeek Harness 插件：记录指标、设定管理目标、查看目标差距与记录覆盖度，而不是把面板做成一张冷冰冰的化验单。
+<p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="健康管理插件封面" width="100%"></p>
 
-主视图是 **薄肌账户**：大练 / 蛋白 / 大睡 / 大水四个行为账户、12 周赛季、每周对账，以及只观察不评分的体成分对账单。插件同时提供代谢管理视图、身材照片、健康档案，以及一套与面板共享同一份数据的 Agent 工具。
+记录最多 8 位家庭成员的血压、血糖、血脂、尿酸、体重、腰围、体脂、睡眠、训练等指标。插件内置两个管理目标：**代谢管理**（腰围、血压、空腹血糖、甘油三酯、HDL-C、BMI 等核心指标，按参考区间与目标差距展示）和**薄肌账户**（大练 / 蛋白 / 大睡 / 大水四个行为账户，12 周一个赛季）。所有数据只保存在本机，只做记录与描述性统计，不提供诊断、治疗或用药建议。
 
-> 仅做记录与描述性统计，不是医疗器械。不提供诊断、治疗、用药、训练计划、食谱或补剂建议；参考区间为人群参考值，不等于个人目标值。请以医生意见为准。
+## 30 秒安装
 
-## 1.3.0 更新
+```sh
+# GitHub 源码
+dsh plugin --profile <your-profile> add github:hebin-cl/dsh-health-management
+# Release tarball
+dsh plugin --profile <your-profile> add https://github.com/hebin-cl/dsh-health-management/releases/latest/download/dsh-health-management.tgz
+```
+
+需要 DeepSeek Harness `>=0.2.2-rc.1 <0.3.0` 与 Node 22+；安装后刷新 Web UI。
+
+<p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/screenshots/01-overview.png" width="360"></p>
+
+薄肌账户概览：四个行为账户、本周对账单与体成分对账单。
+
+> 仅做记录与描述性统计；不提供诊断、治疗、用药、训练计划、食谱或补剂建议；参考区间为人群参考值，不等于个人目标值。
+
+## 1.3.1 更新
+
+- 面板路由先经宿主自带的请求闸门（Host/Origin 校验 + 浏览器登录）再响应；被拒绝的请求返回宿主同款 401/403，且不返回数据。
+- 数据与存储格式均无变化。
+
+**1.3.0 回顾**
 
 - 主 Tab 收敛为 **概览 / 赛季 / 档案 / 发现**。
 - **赛季**独立成版块：赛季 Hero、W4/W8/W12、周对账、分享卡、小队入口。
-- **档案**统一承载趋势、照片、病历与疾病标签，带统计与快捷操作。
-- **发现**接入杭州余杭区试点：10 个公共/社区/特色场馆，支持搜索、筛选、来源链接和本地收藏。
-- **本地小队 MVP**：邀请制、行为排行、只在本机；没有远端服务。
-- 存入单位统一为 **笔**：1 笔 = 一个行为账户当天一次存入；赛季时间用「周」。
+- **档案**统一承载趋势、照片与病历资料。
+- **发现**接入杭州余杭区场馆试点（10 个场馆）；另有本地小队 MVP（邀请制，只在本机）。
 
-> 小队与场馆是 MVP/试点能力；小队数据只存本机，场馆数据来自公开来源，开放时间/收费可能调整，以现场为准。
-
-![总览](assets/screenshots/01-overview.png)
-
-> 截图为 1.2 的视觉基线；1.3 新增赛季、档案、发现页，后续会更新截图。
+小队与场馆为 MVP/试点能力，在界面中有标注。
 
 ## 功能
 
