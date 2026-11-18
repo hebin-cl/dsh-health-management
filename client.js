@@ -223,6 +223,10 @@ window.__ModuleLoader__.load({
         'settings.loading': '正在读取设置…',
         'card.title': '{name}',
         'card.tip': '我只提醒记录和一般生活方式，不提供诊断或用药建议。',
+        'card.keyMetrics': '重点指标',
+        'card.metricsTitle': '{name} · 重点指标',
+        'card.metricsNote': '最近记录 · 仅参考，不构成诊断',
+        'card.noMetrics': '{name} 还没有可展示的重点指标记录；记一笔后这里会显示。',
         'card.open': '打开健康面板',
         'card.snooze': '1 小时后再提醒',
         'card.configHint': '在「设置 → 小肌霸设置」里调整显示与提醒。',
@@ -231,6 +235,7 @@ window.__ModuleLoader__.load({
         'avatar.label': '{name}：拖动可移动，单击打开快捷卡片，双击打开健康面板',
         'status.noMembers': '还没有家庭成员，先去健康面板添加吧。',
         'status.today': '{name} · 今天已记录 {count} 条',
+        'status.memberFallback': '当前成员',
         'status.familyToday': '全家 · 今天已记录 {count} 条',
         'status.unknown': '正在读取今天的记录…',
         'status.goals': '{count} 个管理目标进行中',
@@ -243,6 +248,13 @@ window.__ModuleLoader__.load({
         'tip.breath': '慢慢深呼吸几次，放松一下。',
         'tip.recorded': '今天的记录已经存好了。',
         'tip.training': '薄肌账户今天还没有「大练」的存入记录，练过的话记一笔？',
+        'tip.leanWater': '大水时间：喝一杯水，顺手记一笔。',
+        'tip.leanTraining': '大练时间：起来活动一下，练完记一笔。',
+        'tip.leanMove': '坐了一会儿了？站起来走两分钟，顺便看看今天的大练。',
+        'tip.measure': '该测血压了？按你的监测计划测一次，记一笔。',
+        'tip.meal': '今天还没有饮食记录，记一餐吧。',
+        'tip.move': '起来活动几分钟，顺手记一笔。',
+        'tip.sleepRecord': '今天睡眠还没记，方便时补一笔。',
         'tip.protein': '今天还没有记录蛋白质摄入，有数据的话补一笔？',
         'tip.sleep': '睡眠时长还没有记，方便时补一笔？',
         'tip.snoozed': '好，我 1 小时后再来。',
@@ -310,6 +322,10 @@ window.__ModuleLoader__.load({
         'settings.loading': 'Loading settings…',
         'card.title': '{name}',
         'card.tip': 'I only offer logging prompts and general lifestyle tips, never diagnosis or medication advice.',
+        'card.keyMetrics': 'Key metrics',
+        'card.metricsTitle': '{name} · Key metrics',
+        'card.metricsNote': 'Latest records · reference only, not a diagnosis',
+        'card.noMetrics': '{name} has no key metric records yet; they will appear after a log.',
         'card.open': 'Open health panel',
         'card.snooze': 'Snooze for 1 hour',
         'card.configHint': 'Adjust visibility and reminders in Settings → Little Muscle King settings.',
@@ -318,6 +334,7 @@ window.__ModuleLoader__.load({
         'avatar.label': '{name}: drag to move, click for the quick card, double-click for the health panel',
         'status.noMembers': 'No family members yet. Add one in the health panel first.',
         'status.today': '{name} · {count} records today',
+        'status.memberFallback': 'Current member',
         'status.familyToday': 'Family · {count} records today',
         'status.unknown': 'Reading today\'s records…',
         'status.goals': '{count} active management goals',
@@ -330,6 +347,13 @@ window.__ModuleLoader__.load({
         'tip.breath': 'Take a few slow breaths and relax.',
         'tip.recorded': 'Today\'s records are saved.',
         'tip.training': 'No training deposit in the lean account today. If you trained, log it.',
+        'tip.leanWater': 'Water time: have a glass, and log it while you are at it.',
+        'tip.leanTraining': 'Training time: stand up and move a little, then log it when done.',
+        'tip.leanMove': 'Been sitting a while? Stand up for two minutes and check today\'s training account.',
+        'tip.measure': 'Time to measure blood pressure? Follow your monitoring plan and log it.',
+        'tip.meal': 'No meal log today yet. Log one when you can.',
+        'tip.move': 'Move for a few minutes, then log it.',
+        'tip.sleepRecord': 'Sleep duration is not logged today. Add it when convenient.',
         'tip.protein': 'No protein intake logged today. Add a number if you have one.',
         'tip.sleep': 'Sleep duration is not logged yet. Add it when convenient.',
         'tip.snoozed': 'Okay, I will come back in an hour.',
@@ -633,6 +657,80 @@ window.__ModuleLoader__.load({
 .dshh-doc-title { font-weight:600; font-size:12.5px; }
 .dshh-doc-meta { color:var(--dsw-alias-label-secondary); font-size:11px; margin-top:2px; }
 .dshh-upload { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.dshh-doc-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  justify-content:flex-end; }
+
+/* ---------- report interpretation ---------- */
+.dshh-report-banner { border:1px solid var(--dsw-alias-state-warn-primary); border-radius:10px;
+  padding:10px 12px; font-size:11.5px; line-height:1.65;
+  color:var(--dsw-alias-state-warn-primary);
+  background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 8%, transparent); }
+.dshh-report-layout { display:grid; grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);
+  gap:16px; align-items:start; margin-top:12px; }
+.dshh-report-source { border:1px solid var(--dsw-alias-border-l1); border-radius:14px;
+  padding:12px; background:var(--dsw-alias-bg-layer-1); display:flex; flex-direction:column;
+  gap:10px; position:sticky; top:0; }
+.dshh-report-source-head { display:flex; align-items:flex-start; justify-content:space-between;
+  gap:8px; }
+.dshh-report-source-title { font-size:13px; font-weight:650; }
+.dshh-report-image-link { display:block; }
+.dshh-report-image { display:block; width:100%; max-height:64vh; object-fit:contain;
+  border-radius:8px; background:rgba(0,0,0,.12); }
+.dshh-report-text { margin:0; max-height:64vh; overflow:auto; white-space:pre-wrap;
+  word-break:break-word; font-size:11px; line-height:1.65;
+  color:var(--dsw-alias-label-secondary); }
+.dshh-report-pdf { border:1px dashed var(--dsw-alias-border-l2); border-radius:8px;
+  padding:18px 12px; font-size:11.5px; line-height:1.65;
+  color:var(--dsw-alias-label-secondary); }
+.dshh-report-analysis { min-width:0; display:flex; flex-direction:column; gap:10px; }
+.dshh-report-block { display:flex; flex-direction:column; gap:2px; font-size:11.5px;
+  line-height:1.65; }
+.dshh-report-block b { font-size:11px; color:var(--dsw-alias-label-secondary); font-weight:650; }
+.dshh-report-block p { margin:0; }
+.dshh-report-block[data-kind='suggestion'] { border-left:2px solid var(--dsw-alias-brand-primary);
+  padding-left:8px; }
+.dshh-report-others { border:1px solid var(--dsw-alias-border-l1); border-radius:10px;
+  padding:8px 10px; }
+.dshh-report-others summary { cursor:pointer; font-size:12px; font-weight:600; }
+.dshh-report-otherrow { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 10px;
+  padding:7px 0; border-top:1px solid var(--dsw-alias-border-l1); font-size:11.5px; }
+.dshh-report-otherrow:first-of-type { border-top:none; }
+.dshh-report-otherrow small { display:block; font-size:10.5px; color:var(--dsw-alias-label-secondary); }
+.dshh-report-questions { border-top:1px solid var(--dsw-alias-border-l1); padding-top:8px; }
+@media (max-width: 900px) {
+  .dshh-report-layout { grid-template-columns:1fr; }
+  .dshh-report-source { position:static; }
+  .dshh-report-image, .dshh-report-text { max-height:46vh; }
+}
+.dshh-report-model { display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  margin:12px 0 8px; font-size:11.5px; color:var(--dsw-alias-label-secondary); }
+.dshh-report-badge { display:inline-flex; align-items:center; border-radius:999px;
+  padding:2px 8px; background:var(--dsw-alias-brand-primary); color:#fff;
+  font-size:10px; font-weight:700; letter-spacing:.04em; }
+.dshh-report-disclaimer { border:1px solid var(--dsw-alias-border-l2); border-radius:10px;
+  padding:10px 12px; font-size:11.5px; line-height:1.7;
+  color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-layer-2); }
+.dshh-report-summary { font-size:12.5px; line-height:1.7; margin:10px 0; }
+.dshh-report-list { display:flex; flex-direction:column; gap:8px; margin:10px 0; }
+.dshh-report-indicator { border:1px solid var(--dsw-alias-border-l1); border-radius:10px;
+  padding:10px 12px; background:var(--dsw-alias-bg-layer-1);
+  display:flex; flex-direction:column; gap:5px; }
+.dshh-report-head { display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; flex-wrap:wrap; }
+.dshh-report-name { font-size:12.5px; font-weight:650; }
+.dshh-report-flag { font-size:10.5px; font-weight:600; }
+.dshh-report-flag[data-flag='high'], .dshh-report-flag[data-flag='low'] {
+  color:var(--dsw-alias-state-warn-primary); }
+.dshh-report-flag[data-flag='normal'] { color:var(--dsw-alias-state-success-primary); }
+.dshh-report-flag[data-flag='unknown'] { color:var(--dsw-alias-label-secondary); }
+.dshh-report-values { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  font-variant-numeric:tabular-nums; }
+.dshh-report-value { font-size:13px; font-weight:620; }
+.dshh-report-reference { font-size:10.5px; color:var(--dsw-alias-label-secondary); }
+.dshh-report-plain { font-size:11.5px; line-height:1.65; }
+.dshh-report-sub { font-size:11px; font-weight:650; margin:12px 0 4px; }
+.dshh-report-ul { margin:0; padding-left:18px; font-size:11.5px; line-height:1.7;
+  color:var(--dsw-alias-label-secondary); }
 
 /* ---------- notes / footer ---------- */
 .dshh-note { border-radius:10px; padding:12px 14px; font-size:11.5px; line-height:1.65;
@@ -660,6 +758,7 @@ window.__ModuleLoader__.load({
   background:var(--dsw-alias-bg-overlay); border:1px solid var(--dsw-alias-border-l2);
   border-radius:14px; padding:20px 22px; }
 .dshh-modal-wide { width:min(680px, calc(100vw - 40px)); }
+.dshh-modal-report { width:min(1040px, calc(100vw - 32px)); }
 .dshh-modal-title { font-size:15px; font-weight:650; margin:0 0 16px; }
 .dshh-modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px;
   flex-wrap:wrap; }
@@ -911,7 +1010,14 @@ window.__ModuleLoader__.load({
 .dshh-observe-value { font-size:12.5px; font-variant-numeric:tabular-nums; min-width:0; }
 .dshh-observe-value small { display:block; font-size:9.5px; color:var(--dsw-alias-label-secondary); }
 .dshh-observe-delta { font-size:12.5px; font-weight:650; font-variant-numeric:tabular-nums; }
+.dshh-observe-deltaname { display:none; }
 .dshh-observe-band { display:block; margin-top:2px; font-size:10.5px; color:var(--dsw-alias-label-secondary); line-height:1.5; }
+.dshh-observe-head { display:grid; gap:8px; padding:2px 2px 6px;
+  grid-template-columns:minmax(88px,1fr) minmax(96px,1.1fr) minmax(88px,1fr) minmax(100px,1.2fr);
+  font-size:10px; letter-spacing:.04em; color:var(--dsw-alias-label-secondary);
+  border-bottom:1px solid var(--dsw-alias-border-l1); }
+.dshh-observe-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  justify-content:flex-end; }
 
 .dshh-seasoncard { display:flex; flex-direction:column; gap:10px; }
 .dshh-checkpoints { display:flex; flex-wrap:wrap; gap:8px; }
@@ -1165,8 +1271,13 @@ window.__ModuleLoader__.load({
   .dshh-accountgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .dshh-ledger { min-width:360px; }
   .dshh-observe-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-    row-gap:2px; }
-  .dshh-observe-band { grid-column:1 / -1; }
+    grid-template-areas:"name name" "latest baseline" "delta delta"; row-gap:6px; }
+  .dshh-observe-head { display:none; }
+  .dshh-observe-name { grid-area:name; }
+  .dshh-observe-row > .dshh-observe-value:nth-child(2) { grid-area:latest; }
+  .dshh-observe-row > .dshh-observe-value:nth-child(3) { grid-area:baseline; }
+  .dshh-observe-deltacell { grid-area:delta; }
+  .dshh-observe-deltaname { display:block; font-size:10px; margin-bottom:2px; }
   .dshh-review-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .dshh-hero-sub { font-size:11.5px; }
 }
@@ -1433,6 +1544,22 @@ window.__ModuleLoader__.load({
 .dshh-float-card-title { font-size:13px; font-weight:650; flex:1; min-width:0; }
 .dshh-float-card-status { margin-top:8px; font-size:11.5px; color:var(--dsw-alias-label-secondary);
   font-variant-numeric:tabular-nums; }
+.dshh-float-metrics { margin-top:9px; display:flex; flex-direction:column; gap:5px; }
+.dshh-float-metrics-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.dshh-float-metrics-title { font-size:11px; font-weight:650; }
+.dshh-float-metrics-note { font-size:9.5px; color:var(--dsw-alias-label-secondary); text-align:right; }
+.dshh-float-metric { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px;
+  padding:6px 8px; border:1px solid var(--dsw-alias-border-l1); border-radius:9px;
+  background:var(--dsw-alias-bg-layer-2); }
+.dshh-float-metric-name { font-size:10.5px; color:var(--dsw-alias-label-secondary); }
+.dshh-float-metric-value { grid-row:span 2; align-self:center; text-align:right;
+  font-size:14px; font-weight:680; line-height:1.25; font-variant-numeric:tabular-nums; }
+.dshh-float-metric-value small { margin-left:3px; font-size:10px; font-weight:400;
+  color:var(--dsw-alias-label-secondary); }
+.dshh-float-metric-meta { grid-column:1; font-size:9.5px; line-height:1.35;
+  color:var(--dsw-alias-label-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dshh-float-metrics-empty { padding:7px 8px; font-size:10.5px; color:var(--dsw-alias-label-secondary);
+  border:1px dashed var(--dsw-alias-border-l1); border-radius:9px; }
 .dshh-float-card-text { margin-top:6px; font-size:12px; line-height:1.65; }
 .dshh-float-card-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
 .dshh-float-card-actions .dshh-btn { flex:1; min-width:110px; }
@@ -1703,6 +1830,11 @@ window.__ModuleLoader__.load({
     /** Same-origin read route for one stored photo. */
     function photoUrl(id) {
       return `${API}/photo?id=${encodeURIComponent(id)}`
+    }
+
+    /** Same-origin read route for one archived document preview. */
+    function documentFileUrl(id, member) {
+      return `${API}/document-file?id=${encodeURIComponent(id)}&member=${encodeURIComponent(member)}`
     }
 
     function photoKind(photo) {
@@ -2338,6 +2470,7 @@ window.__ModuleLoader__.load({
     }
 
     function observeDeltaText(target) {
+      if (target?.singleMeasurement === true) return '—'
       if (target?.deltaDisplay) return target.deltaDisplay
       const delta = target?.deltaSinceBaseline
       if (typeof delta !== 'number' || !Number.isFinite(delta)) return '—'
@@ -2350,6 +2483,13 @@ window.__ModuleLoader__.load({
       if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
       const factor = 10 ** digits
       return String(Math.round(value * factor) / factor)
+    }
+
+    /** Attach a unit to a display value; percentages stay attached. */
+    function withMetricUnit(text, unit) {
+      if (text == null || text === '—') return '—'
+      if (!unit) return String(text)
+      return unit === '%' ? `${text}%` : `${text} ${unit}`
     }
 
     function fmtPercent(rate) {
@@ -2525,12 +2665,16 @@ window.__ModuleLoader__.load({
       }
       lines.push(`照片：${review.photoCount} 张 · 覆盖 ${review.photoDays} 天 · 记录天数：${review.recordDays} 天`)
       for (const row of review.body ?? []) {
-        const unit = row?.unit === '%' ? '%' : row?.unit ? ` ${row.unit}` : ''
-        const base = row?.baseline == null ? '—' : `${row.baseline}${unit}`
+        const unit = row?.unit ?? ''
+        const base = withMetricUnit(row?.baseline ?? '—', unit)
         const latestValue = row?.latest ?? row?.currentDisplay
-        const latest = latestValue == null ? '—' : `${latestValue}${unit}`
-        const delta = row?.deltaDisplay
-          ?? observeDeltaText({ deltaSinceBaseline: row?.delta, unit: row?.unit })
+        const latest = withMetricUnit(latestValue ?? '—', unit)
+        const single = row?.single
+          ?? Boolean(row?.baselineAt && row?.latestAt && row.baselineAt === row.latestAt)
+        const delta = single
+          ? '—'
+          : row?.deltaDisplay
+            ?? observeDeltaText({ deltaSinceBaseline: row?.delta, unit })
         lines.push(`${row?.name ?? '体成分'}：${base} → ${latest}（${delta}）`)
       }
       lines.push(`说明：${review.note}`)
@@ -3318,10 +3462,11 @@ window.__ModuleLoader__.load({
     // ---------------------------------------------------------------- modal frame
 
     /**
-     * Shared modal shell: overlay/Esc close, focus the first control on open.
+     * Shared modal shell: overlay/Esc close, focus the first control on open
+     * (or the control matched by `initialFocus`).
      * All panel modals go through this so their close behaviour stays uniform.
      */
-    function ModalFrame({ title, onClose, children, footer, wide }) {
+    function ModalFrame({ title, onClose, children, footer, wide, extraWide, initialFocus }) {
       const boxRef = useRef(null)
 
       useEffect(() => {
@@ -3336,16 +3481,19 @@ window.__ModuleLoader__.load({
       }, [onClose])
 
       useEffect(() => {
-        const first = boxRef.current?.querySelector('input, select, textarea, button')
+        const preferred = initialFocus ? boxRef.current?.querySelector(initialFocus) : null
+        const first = preferred
+          ?? boxRef.current?.querySelector('input, select, textarea, button')
         if (first && typeof first.focus === 'function') first.focus()
-      }, [])
+      }, [initialFocus])
 
       return h(
         'div',
         { className: 'dshh-modal-mask', onMouseDown: (e) => { if (e.target === e.currentTarget) onClose() } },
         h(
           'div',
-          { className: wide ? 'dshh-modal dshh-modal-wide' : 'dshh-modal', ref: boxRef,
+          { className: extraWide ? 'dshh-modal dshh-modal-report'
+            : wide ? 'dshh-modal dshh-modal-wide' : 'dshh-modal', ref: boxRef,
             role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
           h('h2', { className: 'dshh-modal-title' }, title),
           ...(Array.isArray(children) ? children : [children]),
@@ -3580,7 +3728,11 @@ window.__ModuleLoader__.load({
         showToast(result?.ok ? '照片已删除' : (result?.error ?? '删除失败'))
       }
 
-      const openEntry = () => setModal({ kind: 'entry' })
+      // Events pass a SyntheticEvent here; only a string asks for a category focus.
+      const openEntry = (focus) => setModal({
+        kind: 'entry',
+        focus: typeof focus === 'string' ? focus : null,
+      })
       const openPhotoCapture = (photoKind) => setModal({ kind: 'photoCapture', photoKind: photoKind ?? 'progress' })
       const openPhoto = (photo) => setModal({ kind: 'photoView', photo })
       const openPhotoCompare = (a, b) => setModal({ kind: 'photoCompare', photos: [a, b] })
@@ -3653,7 +3805,12 @@ window.__ModuleLoader__.load({
           leanActive: Boolean(leanActiveGoalOf(goals)),
           metabolicActive: Boolean(metabolicActiveGoalOf(goals)),
           onTab: (next) => setTab(next),
-          onSelectMember: (id) => { setSelectedId(id); setTab('overview'); writeSelectedMember(id) },
+          onSelectMember: (id) => {
+            setSelectedId(id)
+            setTab('overview')
+            writeSelectedMember(id)
+            try { window.dispatchEvent(new Event('dsh-health:changed')) } catch { /* ignore */ }
+          },
           onAddMember: () => setModal({ kind: 'member', member: null }),
           onRecord: openEntry,
           onGoal: () => {
@@ -3765,6 +3922,7 @@ window.__ModuleLoader__.load({
               onCompare: openPhotoCompare,
               onRemovePhoto: removePhoto,
               onAddDocument: () => setModal({ kind: 'document' }),
+              onAnalyzeDocument: (document) => setModal({ kind: 'documentAnalysis', document }),
               onRemoveDocument: removeDocument,
               onRemoveCondition: removeCondition,
               onAddCondition: addCondition,
@@ -4606,80 +4764,187 @@ window.__ModuleLoader__.load({
     }
 
     /** Body-composition statement: observe only, never scored. */
-    function BodyStatement({ goal, onMetric, latest, series }) {
+    function BodyStatement({ goal, member, catalogs, onMetric, onRecord, latest, series }) {
       const targets = observeTargets(goal)
-      // BMI may arrive as a latest metric or only inside the trend series.
-      const bmiLatest = (latest ?? []).find((item) => item && item.code === 'bmi') ?? null
+      const metricDef = (code) => (catalogs?.metrics ?? []).find((item) => item?.code === code) ?? null
+      const decimalsOf = (code) => {
+        const decimals = metricDef(code)?.decimals
+        return typeof decimals === 'number' ? decimals : 1
+      }
+      const unitOf = (code, fallback) => metricDef(code)?.unit ?? fallback ?? ''
+      const displayOf = (value, code) => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
+        return value.toFixed(decimalsOf(code))
+      }
+      // A "%" reads better attached; a missing value never gets a dangling unit.
+      const signedDeltaOf = (delta, code, unit) => {
+        if (typeof delta !== 'number' || !Number.isFinite(delta)) return '—'
+        const sign = delta > 0 ? '+' : delta < 0 ? '-' : ''
+        const digits = decimalsOf(code)
+        let text = Math.abs(delta).toFixed(digits)
+        if (digits < 2 && text.endsWith('.0')) text = text.slice(0, -2)
+        return withMetricUnit(`${sign}${text}`, unit)
+      }
+      const height = Number(member?.height)
+      const hasHeight = Number.isFinite(height) && height >= 80 && height <= 250
+      const heightM = hasHeight ? height / 100 : null
+      const round1 = (value) => Math.round(value * 10) / 10
+
+      // BMI may be stored explicitly, derived by the host, or only available as
+      // the weight trend (older payloads). Prefer the host value and fall back to
+      // weight + current height so the row never silently disappears.
+      const weightTarget = targets.find((target) => target?.metric === 'weight') ?? null
+      const bmiLatest = (latest ?? []).find((item) => item?.code === 'bmi') ?? null
       const bmiSeries = series?.bmi ?? null
-      const bmiPoint = (bmiSeries?.points ?? []).slice(-1)[0] ?? null
-      const bmi = bmiLatest ?? (bmiPoint
+      const bmiPoints = bmiSeries?.points ?? []
+      const bmiPoint = bmiPoints.slice(-1)[0] ?? null
+      const weightLatest = (latest ?? []).find((item) => item?.code === 'weight') ?? null
+      const weightValue = weightLatest?.value ?? weightTarget?.current
+      const derivedBmi = hasHeight && typeof weightValue === 'number'
+        ? round1(weightValue / (heightM ** 2))
+        : null
+      const bmiValue = typeof bmiLatest?.value === 'number'
+        ? bmiLatest.value
+        : typeof bmiPoint?.value === 'number'
+          ? bmiPoint.value
+          : derivedBmi
+      const bmiMeasuredAt = bmiLatest?.measuredAt ?? bmiPoint?.at
+        ?? weightLatest?.measuredAt ?? weightTarget?.measuredAt ?? null
+      const bmiUnit = unitOf('bmi', bmiLatest?.unit || bmiSeries?.unit || 'kg/m²')
+      const bmiDisplay = bmiLatest?.display
+        ?? (typeof bmiValue === 'number' ? displayOf(bmiValue, 'bmi') : null)
+
+      // BMI follows weight, so its season baseline follows the weight baseline.
+      // A single record gives nothing to compare and shows "—".
+      const singleMeasurementOf = (row) => row?.singleMeasurement === true
+        || (row?.singleMeasurement === undefined
+          && Boolean(row?.baseline?.measuredAt && row?.measuredAt
+            && row.baseline.measuredAt === row.measuredAt))
+      const weightBaseline = weightTarget?.baseline?.value
+      const bmiBaselineValue = hasHeight && typeof weightBaseline === 'number'
+        ? round1(weightBaseline / (heightM ** 2))
+        : null
+      const bmiComparable = Boolean(weightTarget?.baseline
+        && typeof bmiBaselineValue === 'number'
+        && !singleMeasurementOf(weightTarget))
+      const bmiDelta = bmiComparable && typeof bmiValue === 'number'
+        ? round1(bmiValue - bmiBaselineValue)
+        : null
+
+      const bmi = typeof bmiValue === 'number' || bmiLatest || bmiPoint
         ? {
-            code: 'bmi',
-            name: bmiSeries?.name ?? 'BMI',
-            unit: bmiSeries?.unit ?? '',
-            display: fmtNumber(bmiPoint.value, 1),
-            measuredAt: bmiPoint.at ?? null,
+            metric: 'bmi',
+            name: 'BMI',
+            unit: bmiUnit,
+            currentDisplay: bmiDisplay,
+            measuredAt: bmiMeasuredAt,
+            baseline: typeof bmiBaselineValue === 'number'
+              ? { value: bmiBaselineValue, measuredAt: weightTarget?.baseline?.measuredAt ?? null }
+              : null,
+            deltaSinceBaseline: bmiDelta,
+            band: { label: bmiSeries?.band?.label ?? '中国成人 18.5–23.9' },
           }
-        : null)
+        : null
       // BMI is derived from member height + weight: show it as an extra observed
       // row when the body-composition targets do not already include it.
       const showBmi = Boolean(bmi) && !targets.some((target) => target?.metric === 'bmi')
       if (targets.length === 0 && !showBmi) return null
+      // BMI is derived from weight, so keep it directly under the weight row.
+      const rows = targets.slice()
+      if (showBmi) {
+        const weightIndex = rows.findIndex((row) => row?.metric === 'weight')
+        rows.splice(weightIndex >= 0 ? weightIndex + 1 : rows.length, 0, bmi)
+      }
+      const hasAnyValue = rows.some((row) => row.currentDisplay != null
+        || typeof row.baseline?.value === 'number')
+
+      function bandTextOf(row) {
+        if (row?.metric === 'weight' && hasHeight && bmiSeries?.band) {
+          const low = Number(bmiSeries.band.low)
+          const high = Number(bmiSeries.band.high)
+          if (Number.isFinite(low) && Number.isFinite(high)) {
+            const lowKg = round1(low * heightM ** 2)
+            const highKg = round1(high * heightM ** 2)
+            return `参考 ${lowKg}–${highKg} kg（身高 ${fmtNumber(height, 1)} cm + BMI ${low}–${high} 推算）`
+          }
+        }
+        const base = row?.band?.label ?? row?.targetDisplay ?? '只观察趋势'
+        const unit = row?.unit ?? ''
+        if (!base || !unit) return base
+        // Only labels that end in a bare bound need the unit; trend labels
+        // ("观察趋势") must stay unit-free.
+        if (row?.metric !== 'waist' && row?.metric !== 'bmi') return base
+        if (unit === '%' || base.includes(unit)) return base
+        return `${base} ${unit}`
+      }
+
+      function rowOf(row) {
+        const unit = row.unit || ''
+        const baseline = row.baseline?.value
+        const single = row.metric === 'bmi'
+          ? !bmiComparable
+          : singleMeasurementOf(row)
+        const deltaText = single
+          ? '—'
+          : row.metric === 'bmi'
+            ? signedDeltaOf(row.deltaSinceBaseline, 'bmi', unit)
+            : observeDeltaText(row)
+        const latestHint = row.measuredAt ? `最新 ${fmtTime(row.measuredAt)}` : '暂无最新值'
+        const baselineHint = typeof baseline === 'number'
+          ? `${row.metric === 'bmi' ? '由基线体重换算 · ' : ''}${single ? '首次记录 · ' : ''}赛季基线 ${fmtTime(row.baseline?.measuredAt)}`
+          : '暂无赛季基线'
+        return h('button', {
+          key: row.metric,
+          type: 'button',
+          className: 'dshh-observe-row',
+          title: row.metric === 'bmi' ? 'BMI 由当前身高与体重计算，只观察' : undefined,
+          onClick: () => onMetric?.(row.metric),
+        },
+          h('span', { className: 'dshh-observe-name' },
+            row.name,
+            h('span', { className: 'dshh-observe-tag' }, '只观察')),
+          h('span', { className: 'dshh-observe-value' },
+            withMetricUnit(row.currentDisplay, unit),
+            h('small', null, latestHint)),
+          h('span', { className: 'dshh-observe-value' },
+            typeof baseline === 'number' ? withMetricUnit(displayOf(baseline, row.metric), unit) : '—',
+            h('small', null, baselineHint)),
+          h('span', { className: 'dshh-observe-deltacell' },
+            h('small', { className: 'dshh-observe-deltaname' }, '较基线'),
+            h('span', {
+              className: 'dshh-observe-delta',
+              title: single ? '本赛季暂无可比基线' : undefined,
+            }, deltaText),
+            h('small', { className: 'dshh-observe-band', style: { display: 'block' } },
+              bandTextOf(row))),
+        )
+      }
+
       return h('section', { className: 'dshh-card' },
         h('div', { className: 'dshh-cardhead' },
           h('div', null,
             h('span', { className: 'dshh-cardtitle' }, '体成分对账单'),
             h('div', { className: 'dshh-muted dshh-small' },
-              '只显示最新值、赛季基线与个人 delta；不计分、不排序、不评分。')),
-          h('span', { className: 'dshh-observe-tag' }, '只观察')),
-        h('div', { className: 'dshh-observe-list' }, targets.map((target) => {
-          const unit = target.unit ? ` ${target.unit}` : ''
-          const baseline = target.baseline?.value
-          return h('button', {
-            key: target.metric,
-            type: 'button',
-            className: 'dshh-observe-row',
-            onClick: () => onMetric?.(target.metric),
-          },
-            h('span', { className: 'dshh-observe-name' },
-              target.name,
-              h('span', { className: 'dshh-observe-tag' }, '只观察')),
-            h('span', { className: 'dshh-observe-value' },
-              `${target.currentDisplay ?? '—'}${unit}`,
-              h('small', null, target.measuredAt
-                ? `最新 ${fmtTime(target.measuredAt)}` : '暂无最新值')),
-            h('span', { className: 'dshh-observe-value' },
-              baseline == null ? '—' : `${fmtNumber(Number(baseline), 1)}${unit}`,
-              h('small', null, target.baseline?.measuredAt
-                ? `赛季基线 ${fmtTime(target.baseline.measuredAt)}` : '暂无赛季基线')),
-            h('span', null,
-              h('span', { className: 'dshh-observe-delta' }, observeDeltaText(target)),
-              h('small', { className: 'dshh-observe-band', style: { display: 'block' } },
-                target.band?.label ?? target.targetDisplay ?? '只观察趋势')),
-          )
-        }), showBmi && h('button', {
-          key: 'observe-bmi',
-          type: 'button',
-          className: 'dshh-observe-row',
-          onClick: () => onMetric?.('bmi'),
-        },
-          h('span', { className: 'dshh-observe-name' },
-            'BMI',
-            h('span', { className: 'dshh-observe-tag' }, '只观察')),
-          h('span', { className: 'dshh-observe-value' },
-            `${bmi.display ?? '—'}${bmi.unit ? ` ${bmi.unit}` : ''}`,
-            h('small', null, '由身高体重计算')),
-          h('span', { className: 'dshh-observe-value' },
-            '—',
-            h('small', null, bmi.measuredAt ? `最新 ${fmtTime(bmi.measuredAt)}` : '暂无时间')),
-          h('span', null,
-            h('span', { className: 'dshh-observe-delta' }, '不评分'),
-            h('small', { className: 'dshh-observe-band', style: { display: 'block' } },
-              '人群筛查参考，非诊断')),
-        )),
+              '只显示最新值、赛季基线与变化；不计分、不排序、不评分。')),
+          onRecord && h('div', { className: 'dshh-observe-actions' },
+            h('button', {
+              type: 'button',
+              className: 'dshh-btn',
+              onClick: () => onRecord('body'),
+            }, '＋ 记录体成分'))),
+        h('div', { className: 'dshh-observe-head' },
+          h('span', null, '指标'),
+          h('span', null, '最新'),
+          h('span', null, '赛季基线'),
+          h('span', null, '较基线 / 参考区间')),
+        !hasAnyValue && h('div', { className: 'dshh-muted dshh-small', style: { margin: '2px 0 4px' } },
+          '还没有体成分记录。点右上角「＋ 记录体成分」记下体重、体脂率、骨骼肌量或腰围。'),
+        h('div', { className: 'dshh-observe-list' }, rows.map(rowOf)),
         h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 10 } },
-          '参考区间来自健身 / 中国成人公开参考，非医学标准；建议固定设备与时间比较。点击一行查看该指标全部记录。'
-          + (showBmi ? ' BMI 由身高体重计算，只观察、不评分。' : '')),
+          '参考区间来自健身 / 中国成人公开参考，非医学标准；建议固定设备与时间比较。点击一行查看该指标全部记录。'),
+        h('div', { className: 'dshh-muted dshh-small' },
+          '「较基线」需要赛季内至少 2 次记录，只有 1 次时显示 —。'
+          + (showBmi ? ' BMI 由当前身高与体重计算，只观察、不评分。' : '')),
       )
     }
 
@@ -6365,12 +6630,16 @@ window.__ModuleLoader__.load({
         (review.body ?? []).length === 0
           ? h('div', { className: 'dshh-muted dshh-small' }, '本赛季还没有可对照的体成分记录。')
           : h('div', null, review.body.map((row, index) => {
-              const unit = row?.unit === '%' ? '%' : row?.unit ? ` ${row.unit}` : ''
-              const baseline = row?.baseline == null ? '—' : `${row.baseline}${unit}`
+              const unit = row?.unit ?? ''
+              const baseline = withMetricUnit(row?.baseline ?? '—', unit)
               const latestValue = row?.latest ?? row?.currentDisplay
-              const latest = latestValue == null ? '—' : `${latestValue}${unit}`
-              const delta = row?.deltaDisplay
-                ?? observeDeltaText({ deltaSinceBaseline: row?.delta, unit: row?.unit })
+              const latest = withMetricUnit(latestValue ?? '—', unit)
+              const single = row?.single
+                ?? Boolean(row?.baselineAt && row?.latestAt && row.baselineAt === row.latestAt)
+              const delta = single
+                ? '—'
+                : row?.deltaDisplay
+                  ?? observeDeltaText({ deltaSinceBaseline: row?.delta, unit })
               return h('div', { key: row?.metric ?? `body-${index}`, className: 'dshh-review-line' },
                 h('span', null, `${row?.name ?? '体成分'}：${baseline} → ${latest}`),
                 h('span', null, `${delta}${row?.band?.label ? ` · ${row.band.label}` : ''} · 只观察`))
@@ -7113,7 +7382,8 @@ window.__ModuleLoader__.load({
                 onToast, onMore: onEntry, onSetGoal, onManageGoal,
               }),
         leanDashboard && h(BodyStatement, {
-          goal: leanGoal, onMetric, latest: data.latest, series: data.series,
+          goal: leanGoal, member, catalogs, onMetric, onRecord: onEntry,
+          latest: data.latest, series: data.series,
         }),
         leanDashboard && metabolicReady && h('section', { className: 'dshh-card dshh-met-crosslink' },
           h('div', { className: 'dshh-muted dshh-small' },
@@ -7903,13 +8173,15 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function DocumentSection({ documents, catalogs, onAdd, onRemove }) {
+    function DocumentSection({ documents, catalogs, onAdd, onAnalyze, onRemove }) {
       const types = catalogs?.documentTypes ?? []
       const [filter, setFilter] = useState(null)
       const rows = documents ?? []
       const shown = filter ? rows.filter((item) => item.type === filter) : rows
       const typeName = (code) => types.find((item) => item.code === code)?.name ?? code
       const icons = { medical_record: '📄', prescription: '💊', lab_report: '🧪', imaging: '🩻', other: '📎' }
+      // Older payloads expose the absolute path instead of `hasFile`.
+      const hasFile = (item) => item.hasFile ?? Boolean(item.filePath)
 
       return h('section', { className: 'dshh-card' },
         h('div', { className: 'dshh-cardhead' },
@@ -7928,7 +8200,8 @@ window.__ModuleLoader__.load({
         ),
         rows.length === 0
           ? h('div', { className: 'dshh-muted', style: { fontSize: 12 } },
-              '还没有档案。上传的病历、处方、检验报告可在此登记管理；文件上传请在对话中发送，助手会帮你归档。')
+              '还没有档案。点「＋ 登记档案」上传病历、处方或检验报告；'
+              + '图片 / 文本报告上传后可用「AI 解读」帮助理解，结果只作参考。')
           : h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
               shown.map((item) =>
                 h('div', { key: item.id, className: 'dshh-doc' },
@@ -7941,19 +8214,26 @@ window.__ModuleLoader__.load({
                       + (item.fileName ? ` · ${item.fileName}` : '')
                       + (item.note ? ` · ${item.note}` : '')),
                   ),
-                  h('button', { type: 'button', className: 'dshh-btn-ghost dshh-small',
-                    onClick: () => onRemove(item.id), title: '删除' }, '删除'),
+                  h('div', { className: 'dshh-doc-actions' },
+                    hasFile(item) && h('button', { type: 'button',
+                      className: 'dshh-btn dshh-btn-sm',
+                      onClick: () => onAnalyze?.(item) }, 'AI 解读'),
+                    h('button', { type: 'button', className: 'dshh-btn-ghost dshh-small',
+                      onClick: () => onRemove(item.id), title: '删除' }, '删除')),
                 )),
               shown.length === 0 && h('div', { className: 'dshh-muted dshh-small' },
                 '该类型暂无档案'),
             ),
+        h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 8 } },
+          'AI 解读支持图片（PNG / JPEG / WebP）和文本（.txt）报告；PDF 请先截图或拍照。'
+          + '解读由所选模型生成，只作参考，请以报告原件和医生实际诊断为准。'),
       )
     }
 
     function ArchiveHub({
       member, data, catalogs, photos, photoError, season, series, goalCodes,
       section, onSection, onRecord, onMetricClick, onCapture, onCaptureInspiration,
-      onView, onCompare, onRemovePhoto, onAddDocument, onRemoveDocument,
+      onView, onCompare, onRemovePhoto, onAddDocument, onAnalyzeDocument, onRemoveDocument,
       onRemoveCondition, onAddCondition, onManageConditions,
     }) {
       const sections = [
@@ -8016,18 +8296,19 @@ window.__ModuleLoader__.load({
         }),
         current === 'documents' && h(ArchivePane, {
           member, data, catalogs,
-          onAddDocument, onRemoveDocument, onRemoveCondition, onAddCondition, onManageConditions,
+          onAddDocument, onAnalyzeDocument, onRemoveDocument,
+          onRemoveCondition, onAddCondition, onManageConditions,
         }),
       )
     }
 
-    function ArchivePane({ member, data, catalogs, onAddDocument, onRemoveDocument, onRemoveCondition, onAddCondition, onManageConditions }) {
+    function ArchivePane({ member, data, catalogs, onAddDocument, onAnalyzeDocument, onRemoveDocument, onRemoveCondition, onAddCondition, onManageConditions }) {
       return h(
         'div',
         { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
         h(DocumentSection, {
           documents: data.documents, catalogs,
-          onAdd: onAddDocument, onRemove: onRemoveDocument,
+          onAdd: onAddDocument, onAnalyze: onAnalyzeDocument, onRemove: onRemoveDocument,
         }),
         h('section', { className: 'dshh-card' },
           h('div', { className: 'dshh-cardhead' },
@@ -8089,6 +8370,7 @@ window.__ModuleLoader__.load({
         return h(EntryModal, {
           member, catalogs, contexts: catalogs?.contexts ?? CONTEXT_FALLBACK,
           busy, run, onClose, onToast,
+          focusCategory: modal.focus ?? null,
           goalCodes: goalMetricCodeSet(data?.goals, data?.goalTemplates),
         })
       }
@@ -8107,6 +8389,9 @@ window.__ModuleLoader__.load({
       }
       if (modal.kind === 'document') {
         return h(DocumentModal, { member, catalogs, busy, run, onClose, onToast })
+      }
+      if (modal.kind === 'documentAnalysis') {
+        return h(DocumentAnalysisModal, { member, document: modal.document, onClose, onToast })
       }
       if (modal.kind === 'condition') {
         return h(ConditionModal, { member, data, busy, run, onClose, onToast })
@@ -8266,11 +8551,21 @@ window.__ModuleLoader__.load({
 
     /** Full record list for one metric, opened from a chart or a latest chip. */
     function MetricDetailModal({ code, data, onClose }) {
-      const rows = data?.recordsByMetric?.[code] ?? []
+      const rawRows = data?.recordsByMetric?.[code] ?? []
+      // Older payloads derive only the statement row; the detail modal falls
+      // back to the weight records so a derived BMI never opens an empty list.
+      const height = Number(data?.member?.height)
+      const rows = code === 'bmi' && rawRows.length === 0
+        && Number.isFinite(height) && height >= 80 && height <= 250
+        ? (data?.recordsByMetric?.weight ?? []).map((row) => {
+            const value = Math.round((row.value / ((height / 100) ** 2)) * 10) / 10
+            return { ...row, id: `bmi-${row.id}`, value, display: value.toFixed(1), derived: true }
+          })
+        : rawRows
       const metric = data?.latest?.find((item) => item.code === code)
       const seriesMeta = data?.series?.[code]
-      const name = metric?.name ?? seriesMeta?.name ?? code
-      const unit = metric?.unit ?? seriesMeta?.unit ?? ''
+      const name = metric?.name ?? seriesMeta?.name ?? (code === 'bmi' ? '体质指数' : code)
+      const unit = metric?.unit ?? seriesMeta?.unit ?? (code === 'bmi' ? 'kg/m²' : '')
 
       const stats = useMemo(() => {
         if (rows.length === 0) return null
@@ -8287,6 +8582,9 @@ window.__ModuleLoader__.load({
       return h(ModalFrame, { title: `${name}（${unit}）记录`, onClose },
         stats && h('div', { className: 'dshh-muted', style: { fontSize: '11.5px', marginBottom: 12 } },
           `共 ${stats.count} 条 · 均值 ${stats.mean} · 最低 ${stats.min} · 最高 ${stats.max}`),
+        code === 'bmi' && rows.some((row) => row.derived)
+          && h('div', { className: 'dshh-muted dshh-small', style: { marginBottom: 8 } },
+            'BMI 由身高与体重计算，只观察；直接录入的 BMI 以录入值为准。'),
         rows.length === 0
           ? h('div', { className: 'dshh-empty', style: { padding: '20px' } }, '暂无该指标记录')
           : h('div', { style: { maxHeight: '52vh', overflowY: 'auto' } },
@@ -8295,7 +8593,7 @@ window.__ModuleLoader__.load({
                   h('th', { style: { width: 130 } }, '时间'),
                   h('th', { style: { width: 90 } }, '数值'),
                   h('th', { style: { width: 62 } }, '情境'),
-                  h('th', { style: { width: 52 } }, '来源'),
+                  h('th', { style: { width: 62 } }, '来源'),
                 )),
                 h('tbody', null, rows.map((row) =>
                   h('tr', { key: row.id },
@@ -8304,7 +8602,7 @@ window.__ModuleLoader__.load({
                       `${row.display} ${unit}`),
                     h('td', { className: 'dshh-muted' }, row.context),
                     h('td', { className: 'dshh-muted' },
-                      RECORD_SOURCE_LABEL[row.source] ?? row.source),
+                      row.derived ? '自动计算' : (RECORD_SOURCE_LABEL[row.source] ?? row.source)),
                   ))),
               ),
             ),
@@ -8449,8 +8747,11 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function EntryModal({ member, catalogs, contexts, busy, run, onClose, onToast, goalCodes }) {
+    function EntryModal({
+      member, catalogs, contexts, busy, run, onClose, onToast, goalCodes, focusCategory,
+    }) {
       const metrics = catalogs?.metrics ?? []
+      const focus = typeof focusCategory === 'string' ? focusCategory : null
       const [vals, setVals] = useState({})
       const [time, setTime] = useState(() => toLocalInput())
       const [context, setContext] = useState(() => inferContext(toLocalInput()))
@@ -8487,6 +8788,7 @@ window.__ModuleLoader__.load({
       const related = goalCodes ?? new Set()
       const initialOpen = () => {
         const open = new Set()
+        if (focus && groups.some((group) => group.code === focus)) open.add(focus)
         for (const group of groups) {
           if (group.metrics.some((metric) => related.has(metric.code))) open.add(group.code)
         }
@@ -8571,7 +8873,11 @@ window.__ModuleLoader__.load({
           onClick: save, disabled: busy || saving }, saving ? '保存中…' : '保存'),
       )
 
-      return h(ModalFrame, { title: '录入指标（全部指标）', onClose, footer, wide: true },
+      const focusSelector = focus === 'body' ? '[data-metric="weight"]' : null
+      return h(ModalFrame, {
+        title: focus === 'body' ? '记录体成分' : '录入指标（全部指标）',
+        onClose, footer, wide: true, initialFocus: focusSelector,
+      },
         h('div', { className: 'dshh-field-row' },
           h('div', { className: 'dshh-field' },
             h('label', { className: 'dshh-field-label' }, '测量时间'),
@@ -8613,6 +8919,7 @@ window.__ModuleLoader__.load({
                       autoComplete: 'off',
                       placeholder: '—',
                       'aria-label': metric.name,
+                      'data-metric': metric.code,
                       value: vals[metric.code] ?? '',
                       onChange: (e) => setVals({ ...vals, [metric.code]: e.target.value }),
                     }),
@@ -8718,9 +9025,327 @@ window.__ModuleLoader__.load({
             onChange: (e) => setNote(e.target.value) }),
         ),
         h('div', { className: 'dshh-muted dshh-small' },
-          '上传后文件会保存在本机档案目录。若需要从报告中提取诊断与关键指标，请在对话中发送该文件让助手协助识别，识别结果会先向你确认再记录。'),
+          '上传后文件会保存在本机档案目录。AI 解读目前支持图片（PNG / JPEG / WebP）和文本（.txt）报告；'
+          + 'PDF 请先截图或拍照后再上传。解读由所选模型生成，只作参考，请以报告原件和医生实际诊断为准。'),
         error && h('div', { className: 'dshh-error', style: { marginTop: 10 } }, error),
       )
+    }
+
+    const REPORT_FLAG_LABEL = {
+      high: '高于报告参考',
+      low: '低于报告参考',
+      normal: '在报告参考内',
+      unknown: '报告未标注参考',
+    }
+
+    const REPORT_FALLBACK_DISCLAIMER = 'AI 生成内容仅供参考，不构成诊断、治疗或用药建议；'
+      + '请以报告原件和医生的实际诊断为准，不要据此自行用药、停药或调整剂量。'
+
+    /** AI reading of one archived report: proposal only, never a diagnosis. */
+    function DocumentAnalysisModal({ member, document, onClose, onToast }) {
+      const [catalog, setCatalog] = useState(null)
+      const [catalogError, setCatalogError] = useState(null)
+      const [unsupported, setUnsupported] = useState(false)
+      const [modelSaving, setModelSaving] = useState(false)
+      const [analysis, setAnalysis] = useState(null)
+      const [analyzing, setAnalyzing] = useState(false)
+      const [error, setError] = useState(null)
+      const [copied, setCopied] = useState(false)
+      const [imageError, setImageError] = useState(false)
+
+      useEffect(() => {
+        let stale = false
+        postAction('getReportModels', {})
+          .then((result) => {
+            if (stale) return
+            if (result?.ok) setCatalog(result)
+            else if (/未知操作/.test(String(result?.error ?? ''))) setUnsupported(true)
+            else setCatalogError(result?.error ?? '读取解读模型失败')
+          })
+          .catch((cause) => {
+            if (!stale) setCatalogError(`读取解读模型失败：${String(cause?.message ?? cause)}`)
+          })
+        return () => { stale = true }
+      }, [])
+
+      const modelSettings = catalog?.settings ?? { mode: 'auto', provider: null, model: null }
+      const modelRoutes = catalog?.routes ?? []
+      const fixedKey = modelSettings.mode === 'fixed' && modelSettings.provider && modelSettings.model
+        ? `${modelSettings.provider}::${modelSettings.model}`
+        : null
+      const routeKeys = new Set(modelRoutes.map((route) => `${route.provider}::${route.model}`))
+      const modelValue = fixedKey ?? 'auto'
+      const resolvedRoute = catalog?.resolved ?? null
+      const resolvedLabel = resolvedRoute
+        ? `当前：${resolvedRoute.modelName ?? resolvedRoute.model}`
+          + (resolvedRoute.providerName ? ` · ${resolvedRoute.providerName}` : '')
+          + (resolvedRoute.source === 'fixed'
+            ? '（已指定）'
+            : resolvedRoute.source === 'default' ? '（默认模型）' : '（自动选择）')
+        : catalog
+          ? '当前没有可用的图片模型：请先在 DSH 设置 → 模型服务接入。'
+          : catalogError ? '模型列表读取失败，稍后重试。' : '正在读取模型列表…'
+      const noModel = Boolean(catalog) && catalog.hasVision === false
+      const busy = analyzing || modelSaving
+
+      async function onPickModel(event) {
+        const value = String(event.target.value ?? 'auto')
+        const payload = value === 'auto'
+          ? { mode: 'auto', provider: null, model: null }
+          : {
+            mode: 'fixed',
+            provider: value.split('::')[0],
+            model: value.split('::').slice(1).join('::'),
+          }
+        setCatalogError(null)
+        setModelSaving(true)
+        try {
+          const result = await postAction('setReportSettings', { settings: payload })
+          if (!result?.ok) {
+            setCatalogError(result?.error ?? '切换解读模型失败')
+            return
+          }
+          setCatalog(result)
+          // The previous result belongs to the previous model; do not show it
+          // under a new selection.
+          setAnalysis(null)
+          onToast?.(value === 'auto' ? '解读模型已改为自动选择' : '解读模型已切换')
+        } catch (cause) {
+          setCatalogError(`切换解读模型失败：${String(cause?.message ?? cause)}`)
+        } finally {
+          setModelSaving(false)
+        }
+      }
+
+      async function analyze() {
+        setError(null)
+        setAnalyzing(true)
+        try {
+          const result = await postAction('analyzeDocument', { member: member.name, id: document.id })
+          if (!result?.ok) {
+            setError(result?.error ?? '解读失败，请重试')
+            setAnalysis(null)
+            return
+          }
+          setAnalysis(result)
+        } catch (cause) {
+          setError(`解读失败：${String(cause?.message ?? cause)}`)
+        } finally {
+          setAnalyzing(false)
+        }
+      }
+
+      async function copy() {
+        if (!analysis?.analysis) return
+        const a = analysis.analysis
+        const model = a.model ?? {}
+        const source = model.source === 'fixed' ? '已指定'
+          : model.source === 'default' ? '默认模型' : '自动选择'
+        const lines = [
+          `AI 报告解读 · ${document.title}（${document.docDate ?? '日期未标注'}）`,
+          `模型：${model.modelName ?? model.model ?? '未知'} · ${model.providerName ?? model.provider ?? '未知'}（${source}）`,
+          analysis.disclaimer || REPORT_FALLBACK_DISCLAIMER,
+          '',
+          `摘要：${a.summary ?? ''}`,
+        ]
+        const abnormal = (a.indicators ?? []).filter((row) => row.flag === 'high' || row.flag === 'low')
+        for (const row of abnormal) {
+          lines.push(`【${REPORT_FLAG_LABEL[row.flag] ?? row.flag}】${row.name}`
+            + `${row.abbr ? `（${row.abbr}）` : ''}：${row.value || '—'}`
+            + `${row.unit ? ` ${row.unit}` : ''} · 报告参考：${row.reference}`)
+          if (row.meaning) lines.push(`  这项主要看什么：${row.meaning}`)
+          if (row.abnormalMeaning) lines.push(`  异常通常说明什么：${row.abnormalMeaning}`)
+          if (row.suggestion) lines.push(`  一般建议（非处方）：${row.suggestion}`)
+        }
+        if (abnormal.length === 0) lines.push('报告没有标注超出参考区间的指标。')
+        if ((a.nextSteps ?? []).length > 0) lines.push('', '下一步：', ...a.nextSteps.map((q) => `- ${q}`))
+        if ((a.generalInfo ?? []).length > 0) {
+          lines.push('', '一般健康信息（公开参考，非处方）：', ...a.generalInfo.map((q) => `- ${q}`))
+        }
+        if (analysis.privacy) lines.push('', analysis.privacy)
+        if ((a.questions ?? []).length > 0) lines.push('', '可以问医生：', ...a.questions.map((q) => `- ${q}`))
+        try {
+          await leanCopyText(lines.join('\n'))
+          setCopied(true)
+          onToast?.('报告解读已复制')
+          setTimeout(() => setCopied(false), 2000)
+        } catch (cause) {
+          onToast?.(`复制失败：${String(cause?.message ?? cause)}`)
+        }
+      }
+
+      const a = analysis?.analysis ?? null
+      const abnormal = (a?.indicators ?? []).filter((row) => row.flag === 'high' || row.flag === 'low')
+      const others = (a?.indicators ?? []).filter((row) => row.flag !== 'high' && row.flag !== 'low')
+      const isText = /\.txt$/i.test(String(document?.fileName ?? ''))
+      const isPdf = /\.pdf$/i.test(String(document?.fileName ?? ''))
+      const previewUrl = document ? documentFileUrl(document.id, member.name) : ''
+      const model = a?.model ?? null
+      const modelLine = model
+        ? `${model.modelName ?? model.model} · ${model.providerName ?? model.provider}`
+        : ''
+      const sourceLine = model?.source === 'fixed' ? '已指定'
+        : model?.source === 'default' ? '默认模型' : '自动选择'
+      const generated = a?.generatedAt
+        ? fmtTime(String(a.generatedAt).replace('T', ' '))
+        : ''
+
+      const footer = h('div', { className: 'dshh-modal-actions' },
+        h('span', { className: 'dshh-muted dshh-small', style: { marginRight: 'auto' } },
+          '解读结果不会自动写入记录'),
+        a && h('button', { type: 'button', className: 'dshh-btn', onClick: copy },
+          copied ? '已复制' : '复制解读'),
+        h('button', { type: 'button', className: 'dshh-btn', onClick: onClose }, '关闭'),
+        h('button', {
+          type: 'button', className: 'dshh-btn dshh-btn-primary',
+          onClick: analyze, disabled: busy || noModel || unsupported,
+        }, analyzing ? '解读中…' : a ? '重新解读' : '开始解读'),
+      )
+
+      const disclaimerText = 'AI 生成内容，不是医生诊断，也不构成治疗或用药建议。AI 可能看错报告；'
+        + '请以报告原件和医生的实际诊断、处方为准，不要据此自行用药、停药或调整剂量。'
+
+      return h(ModalFrame, {
+        title: `AI 解读 · ${document?.title ?? '报告'}`,
+        onClose, footer, extraWide: true,
+      },
+        h('div', { className: 'dshh-report-banner' }, disclaimerText),
+        h('div', { className: 'dshh-report-layout' },
+          h('section', { className: 'dshh-report-source' },
+            h('div', { className: 'dshh-report-source-head' },
+              h('div', null,
+                h('div', { className: 'dshh-report-source-title' }, document?.title ?? '报告'),
+                h('div', { className: 'dshh-muted dshh-small' },
+                  `${document?.docDate ?? '日期未标注'} · ${document?.fileName ?? '已上传文件'}`)),
+              previewUrl && h('a', {
+                className: 'dshh-btn-ghost dshh-small',
+                href: previewUrl, target: '_blank', rel: 'noreferrer',
+              }, '打开原图 ↗')),
+            isText
+              ? h('pre', { className: 'dshh-report-text' },
+                  a?.sourceText || '开始解读后在此显示文本内容；也可以点「打开原图」查看。')
+              : isPdf
+                ? h('div', { className: 'dshh-report-pdf' },
+                    'PDF 报告。AI 解读暂不支持直接读取 PDF；请截图或拍照成图片后重新上传。')
+                : imageError
+                  ? h('div', { className: 'dshh-report-pdf' },
+                      '原图预览失败；请点右上角「打开原图」查看。')
+                  : h('a', {
+                      className: 'dshh-report-image-link',
+                      href: previewUrl, target: '_blank', rel: 'noreferrer',
+                    },
+                      h('img', {
+                        className: 'dshh-report-image',
+                        src: previewUrl,
+                        alt: '报告原图',
+                        loading: 'lazy',
+                        onError: () => setImageError(true),
+                      }))),
+          h('section', { className: 'dshh-report-analysis' },
+            unsupported
+              ? h('div', { className: 'dshh-note' },
+                  '当前运行中的宿主还没有报告解读动作；重启 DSH 后再打开这份档案即可使用。')
+              : h('div', { className: 'dshh-field' },
+                  h('label', { className: 'dshh-field-label' }, '解读模型'),
+                  h('select', {
+                    className: 'dshh-select',
+                    value: modelValue,
+                    disabled: modelSaving || !catalog,
+                    onChange: onPickModel,
+                  },
+                    h('option', { value: 'auto' }, '自动选择（默认模型优先）'),
+                    modelRoutes.map((route) => h('option', {
+                      key: `${route.provider}::${route.model}`,
+                      value: `${route.provider}::${route.model}`,
+                    }, `${route.modelName} · ${route.providerName}`)),
+                    fixedKey && !routeKeys.has(fixedKey) && h('option', { value: fixedKey },
+                      `${modelSettings.model} · ${modelSettings.provider}（不在当前列表）`),
+                  ),
+                  h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 4 } }, resolvedLabel),
+                  catalogError && h('div', { className: 'dshh-note dshh-small', style: { marginTop: 4 } }, catalogError),
+                  h('div', { className: 'dshh-muted dshh-small', style: { marginTop: 4 } },
+                    '接入新模型：DSH 设置 → 模型服务；只有声明图片输入的模型会出现在这里。')),
+            h('div', { className: 'dshh-privacy' },
+              '报告文件会发送给所选模型服务，仅用于本次解读；不会写入测量记录，也不会用于训练。'),
+            error && h('div', { className: 'dshh-error' }, error),
+            a
+              ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+                  h('div', { className: 'dshh-report-model' },
+                    h('span', { className: 'dshh-report-badge' }, 'AI 生成'),
+                    h('span', null, `本次由 ${modelLine} 生成`),
+                    h('span', null, `（${sourceLine}${generated ? ` · ${generated}` : ''}）`)),
+                  h('div', { className: 'dshh-muted dshh-small' },
+                    a.confidence === 'low'
+                      ? '模型对本次识别把握较低，请重点核对原件。'
+                      : '识别结果可能受图片清晰度与排版影响；请对照报告原件核对数值和参考区间。'),
+                  a.summary && h('p', { className: 'dshh-report-summary' }, a.summary),
+                  h('div', null,
+                    h('div', { className: 'dshh-report-sub' },
+                      `异常指标${abnormal.length > 0 ? ` · ${abnormal.length} 项` : ''}`),
+                    abnormal.length === 0
+                      ? h('div', { className: 'dshh-muted dshh-small' },
+                          '报告中没有标注超出参考区间的指标。')
+                      : h('div', { className: 'dshh-report-list' }, abnormal.map((row, index) =>
+                          h('div', {
+                            key: `report-abnormal-${index}`,
+                            className: 'dshh-report-indicator',
+                            'data-flag': row.flag,
+                          },
+                            h('div', { className: 'dshh-report-head' },
+                              h('span', { className: 'dshh-report-name' },
+                                row.name,
+                                row.abbr
+                                  ? h('span', { className: 'dshh-muted dshh-small' }, `（${row.abbr}）`)
+                                  : null),
+                              h('span', { className: 'dshh-report-flag', 'data-flag': row.flag },
+                                REPORT_FLAG_LABEL[row.flag] ?? '超出报告参考')),
+                            h('div', { className: 'dshh-report-values' },
+                              h('span', { className: 'dshh-report-value' },
+                                `${row.value || '—'}${row.unit ? ` ${row.unit}` : ''}`),
+                              h('span', { className: 'dshh-report-reference' },
+                                `报告参考：${row.reference}`)),
+                            h('div', { className: 'dshh-report-block' },
+                              h('b', null, '这项主要看什么'),
+                              h('p', null, row.meaning)),
+                            row.abnormalMeaning && h('div', { className: 'dshh-report-block' },
+                              h('b', null, '异常通常说明什么'),
+                              h('p', null, row.abnormalMeaning)),
+                            row.suggestion && h('div', {
+                              className: 'dshh-report-block',
+                              'data-kind': 'suggestion',
+                            },
+                              h('b', null, '一般建议（非处方）'),
+                              h('p', null, row.suggestion)))))),
+                  others.length > 0 && h('details', { className: 'dshh-report-others' },
+                    h('summary', null, `其他 ${others.length} 项指标`),
+                    h('div', null, others.map((row, index) =>
+                      h('div', { key: `report-other-${index}`, className: 'dshh-report-otherrow' },
+                        h('div', null,
+                          row.name,
+                          row.abbr ? `（${row.abbr}）` : '',
+                          h('small', null, `报告参考：${row.reference}`)),
+                        h('div', { style: { textAlign: 'right' } },
+                          `${row.value || '—'}${row.unit ? ` ${row.unit}` : ''}`,
+                          h('small', null, REPORT_FLAG_LABEL[row.flag] ?? '报告未标注参考')))))),
+                  (a.generalInfo ?? []).length > 0 && h('div', null,
+                    h('div', { className: 'dshh-report-sub' }, '补充一般信息（公开参考，非处方）'),
+                    h('ul', { className: 'dshh-report-ul' },
+                      a.generalInfo.map((q, index) => h('li', { key: `report-g-${index}` }, q)))),
+                  (a.nextSteps ?? []).length > 0 && h('div', null,
+                    h('div', { className: 'dshh-report-sub' }, '下一步'),
+                    h('ul', { className: 'dshh-report-ul' },
+                      a.nextSteps.map((q, index) => h('li', { key: `report-step-${index}` }, q)))),
+                  h('div', { className: 'dshh-report-questions' },
+                    h('div', { className: 'dshh-report-sub' }, '可以问医生'),
+                    (a.questions ?? []).length > 0
+                      ? h('ul', { className: 'dshh-report-ul' },
+                          a.questions.map((q, index) => h('li', { key: `report-q-${index}` }, q)))
+                      : h('div', { className: 'dshh-muted dshh-small' },
+                          '可以问医生：这些异常项是否需要复查？是否需要结合其他检查一起看？下一步怎么安排？')))
+              : h('div', { className: 'dshh-note' },
+                  '左侧是报告原图。选择模型后点底部「开始解读」，右侧会列出异常指标、一般建议和可以问医生的问题。'))
+          )
+        )
     }
 
     /** Read a File into a base64 data string. */
@@ -9054,6 +9679,7 @@ window.__ModuleLoader__.load({
         MetabolicPane, MetabolicStatement, MetabolicLedger, MetabolicCycleCard, MetabolicHero,
         MetabolicDepositCard, CutHero, DualHero, HandbookModal, OverviewPane,
         FamilyMonitorModal, LabEntryModal, VisitSummaryModal, WeeklyReviewModal,
+        DocumentAnalysisModal,
       }
     }
 
@@ -9151,7 +9777,9 @@ window.__ModuleLoader__.load({
       if (floatPendingSaves > 0) return
       const seqAtStart = floatSaveSeq
       try {
-        const body = await floatFetchJSON(`${API}/float`, { credentials: 'same-origin' })
+        const selected = readSelectedMember()
+        const query = selected ? `?member=${encodeURIComponent(selected)}` : ''
+        const body = await floatFetchJSON(`${API}/float${query}`, { credentials: 'same-origin' })
         // A save started while this GET was in flight: its optimistic state is
         // newer than the snapshot we just received.
         if (seqAtStart !== floatSaveSeq || floatPendingSaves > 0) return
@@ -9271,21 +9899,50 @@ window.__ModuleLoader__.load({
 
     let floatTipCursor = 0
 
+    /** Minutes since a stored `YYYY-MM-DD HH:mm` timestamp; Infinity if absent. */
+    function floatMinutesSince(value, now = Date.now()) {
+      if (!value) return Infinity
+      const time = new Date(String(value).replace(' ', 'T')).getTime()
+      return Number.isFinite(time) ? (now - time) / 60000 : Infinity
+    }
+
     /**
-     * Aggregate-only reminder choice. It looks at record COUNTS and active goal
-     * codes; it never reads a measurement value, a condition tag, or a target
-     * gap, so a reminder can never become a diagnosis or medication cue.
+     * Goal-aware reminder choice. It reads record counts, active goal codes and
+     * last water/training timestamps; it never reads a measurement value, a
+     * condition tag, or a target gap, so a reminder cannot become a diagnosis or
+     * medication cue. Lean-muscle alternates water and movement reminders;
+     * metabolic alternates measure / meal / activity / sleep prompts.
      */
     function floatReminder(status) {
       if (!status || status.memberCount === 0) return 'tip.noMembers'
       const counts = status.counts ?? {}
-      if ((status.todayRecordCount ?? 0) === 0) return 'tip.record'
-      const lean = (status.activeGoals ?? []).some((goal) => goal.code === 'lean_muscle')
+      const goals = status.activeGoals ?? []
+      const lean = goals.some((goal) => goal.code === 'lean_muscle')
+      const metabolic = goals.some((goal) => goal.code === 'metabolic')
+      const hour = new Date().getHours()
+
       if (lean) {
-        if (!counts.training) return 'tip.training'
-        if (!counts.protein) return 'tip.protein'
-        if (!counts.sleep) return 'tip.sleep'
+        const waterDue = !counts.water || floatMinutesSince(status.lastWaterAt) >= 90
+        const trainingDue = !counts.training || floatMinutesSince(status.lastTrainingAt) >= 36 * 60
+        // Both due: alternate so the user hears about water and the 大练 account
+        // rather than only one of them. Neither is a training prescription.
+        if (waterDue && trainingDue) {
+          return floatTipCursor++ % 2 === 0 ? 'tip.leanWater' : 'tip.leanTraining'
+        }
+        if (waterDue) return 'tip.leanWater'
+        if (trainingDue && hour >= 7 && hour < 22) return 'tip.leanTraining'
+        const keys = ['tip.leanWater', 'tip.leanMove', 'tip.leanTraining']
+        return keys[floatTipCursor++ % keys.length]
       }
+
+      if (metabolic) {
+        if (!counts.sbp && !counts.dbp && hour >= 6 && hour < 22) return 'tip.measure'
+        if (!(status.todayMealCount > 0) && hour >= 6 && hour < 22) return 'tip.meal'
+        if (!counts.activity && hour >= 8 && hour < 21) return 'tip.move'
+        if (!counts.sleep && hour >= 20) return 'tip.sleepRecord'
+      }
+
+      if ((status.todayRecordCount ?? 0) === 0) return 'tip.record'
       if (floatTipCursor % 5 === 4) {
         floatTipCursor += 1
         return 'tip.recorded'
@@ -9721,19 +10378,18 @@ window.__ModuleLoader__.load({
       if (!settings.enabled) return null
 
       const status = snapshot.status
+      const memberName = status?.member?.name
+        ?? status?.primaryMember?.name
+        ?? floatTranslate('status.memberFallback')
       let statusText = floatTranslate('status.unknown')
       if (status) {
         if (status.memberCount === 0) {
           statusText = floatTranslate('status.noMembers')
         } else {
-          // The count is family-wide, so do not attribute it to one member
-          // when the household has more than one profile.
-          statusText = status.memberCount === 1
-            ? floatText('status.today', {
-              name: status.primaryMember?.name ?? '',
-              count: status.todayRecordCount ?? 0,
-            })
-            : floatText('status.familyToday', { count: status.todayRecordCount ?? 0 })
+          statusText = floatText('status.today', {
+            name: memberName,
+            count: status.todayRecordCount ?? 0,
+          })
           const goalCount = (status.activeGoals ?? []).length
           if (goalCount > 0) statusText += ` · ${floatText('status.goals', { count: goalCount })}`
         }
@@ -9795,6 +10451,22 @@ window.__ModuleLoader__.load({
               'aria-label': floatTranslate('card.close'),
             }, '×')),
           h('div', { className: 'dshh-float-card-status' }, statusText),
+          h('div', { className: 'dshh-float-metrics' },
+            h('div', { className: 'dshh-float-metrics-head' },
+              h('span', { className: 'dshh-float-metrics-title' }, floatText('card.metricsTitle', { name: memberName })),
+              h('span', { className: 'dshh-float-metrics-note' }, floatTranslate('card.metricsNote'))),
+            (status?.keyMetrics ?? []).length > 0
+              ? status.keyMetrics.map((metric) => h('div', {
+                key: metric.code,
+                className: 'dshh-float-metric',
+              },
+                h('span', { className: 'dshh-float-metric-name' }, metric.name),
+                h('span', { className: 'dshh-float-metric-value' },
+                  metric.display,
+                  metric.unit ? h('small', null, metric.unit) : null),
+                h('span', { className: 'dshh-float-metric-meta' },
+                  [metric.bandLabel, fmtDay(metric.measuredAt)].filter(Boolean).join(' · '))))
+              : h('div', { className: 'dshh-float-metrics-empty' }, floatText('card.noMetrics', { name: memberName }))),
           h('div', { className: 'dshh-float-card-text' }, floatTranslate('card.tip')),
           h('div', { className: 'dshh-float-card-actions' },
             h('button', {

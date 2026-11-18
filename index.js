@@ -8,7 +8,7 @@
 
 import { readFile, stat } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   HealthService,
@@ -30,6 +30,7 @@ import { VENUE_REGION, YUYANG_VENUES } from './lib/venues.js'
 import { FloatSettingsStore, floatStatus } from './lib/float.js'
 import {
   EstimateSettingsStore,
+  ModelSettingsStore,
   normalizeEstimateSettings,
   buildEstimateCatalog,
   updateEstimateSettings,
@@ -72,6 +73,10 @@ export function apply(ctx, config) {
   // Which model reads the meal photo. A device preference (the user's own
   // provider/budget), not health data; `auto` keeps the historical behaviour.
   const estimateStore = new EstimateSettingsStore(join(baseDir, 'estimate.json'))
+  // Report interpretation is a separate image task: the user may want a
+  // different (for example, stronger) model than the one used for meals, and
+  // switching one must not silently move the other.
+  const reportStore = new ModelSettingsStore(join(baseDir, 'report-model.json'))
 
   // Report what the profile actually mounts, so the storage decision is based
   // on evidence rather than on the config directory's `absent` status.
@@ -794,9 +799,11 @@ export function apply(ctx, config) {
         if (denied) return denied
         try {
           await ready
+          const url = new URL(request.url, 'http://localhost')
+          const member = url.searchParams.get('member') ?? undefined
           const [settings, status] = await Promise.all([
             floatStore.get(),
-            floatStatus(service),
+            floatStatus(service, member),
           ])
           return json({ ok: true, settings, status })
         } catch (error) {
@@ -864,6 +871,36 @@ export function apply(ctx, config) {
         try {
           const file = await service.photoFile(id)
           if (!file) return new Response('照片不存在。', { status: 404 })
+          return new Response(file.buffer, {
+            headers: {
+              'content-type': file.mime,
+              'content-length': String(file.buffer.length),
+              'cache-control': 'no-store',
+              'x-content-type-options': 'nosniff',
+            },
+          })
+        } catch (error) {
+          return new Response(String(error?.message ?? error), { status: 500 })
+        }
+      },
+    }),
+  )
+
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: '/api/dsh-health/document-file',
+      resource: async (request) => {
+        const denied = refusal(request)
+        if (denied) return denied
+        await ready
+        const url = new URL(request.url, 'http://localhost')
+        const id = url.searchParams.get('id')
+        const member = url.searchParams.get('member')
+        if (!id || !member) return new Response('缺少档案参数。', { status: 400 })
+        try {
+          const file = await service.documentFile(member, id)
+          if (!file.ok) return new Response(file.error, { status: 404 })
           return new Response(file.buffer, {
             headers: {
               'content-type': file.mime,
@@ -954,7 +991,7 @@ export function apply(ctx, config) {
           const raw = await readBody(req)
           const body = raw ? JSON.parse(raw) : {}
           const { action, args = {} } = body ?? {}
-          const result = await runAction(service, action, args, ctx, { estimateStore })
+          const result = await runAction(service, action, args, ctx, { estimateStore, reportStore })
           writeJson(res, 200, result)
         } catch (error) {
           writeJson(res, 400, { ok: false, error: String(error?.message ?? error) })
@@ -1061,6 +1098,7 @@ export function apply(ctx, config) {
           community: join(baseDir, 'community.json'),
           float: floatStore.path,
           estimate: estimateStore.path,
+          reportModel: reportStore.path,
         },
         storage: storageProbe,
       }),
@@ -1097,6 +1135,12 @@ async function runAction(service, action, args, ctx, stores = {}) {
       return estimateCatalog(ctx, stores.estimateStore)
     case 'setEstimateSettings':
       return saveEstimateSettings(ctx, stores.estimateStore, args)
+    case 'getReportModels':
+      return reportCatalog(ctx, stores.reportStore)
+    case 'setReportSettings':
+      return saveReportSettings(ctx, stores.reportStore, args)
+    case 'analyzeDocument':
+      return analyzeReportDocument(ctx, service, args, stores.reportStore)
     case 'addCondition':
       return service.addCondition(args.member, { code: args.code, source: args.source, note: args.note })
     case 'removeCondition':
@@ -1388,7 +1432,425 @@ async function estimateMeal(ctx, service, { member, dataBase64, note, mealType }
   }
 }
 
-/** Windows-local clipboard bridge for the invite-code copy button. */
+// ---------------------------------------------------------------------------
+// Report interpretation
+//
+// The panel hands the Host one archived document id; the Host reads the file it
+// already stores and asks a vision-capable model to explain the report's own
+// text and reference ranges. Nothing is written: the panel receives a proposal
+// with the model label and a fixed disclaimer. A prescription is refused
+// outright, and the prompt forbids diagnosis, treatment and medication advice.
+// ---------------------------------------------------------------------------
+
+const REPORT_TIMEOUT_MS = 60_000
+const REPORT_MAX_IMAGE_BYTES = 12 * 1024 * 1024
+const REPORT_MAX_TEXT_CHARS = 24_000
+const REPORT_MAX_INDICATORS = 30
+
+const REPORT_DISCLAIMER = '以下内容由 AI 模型根据你上传的报告生成，仅用于帮助理解报告文字与参考区间，'
+  + '不构成诊断、治疗、用药、饮食或运动建议。AI 可能识别错误，报告数值与参考区间请以原件为准。'
+  + '是否患病、是否需要治疗或调整用药，请以医生的实际诊断和处方为准；请勿依据本解读自行用药、停药或改变剂量。'
+
+const REPORT_PRIVACY = '报告文件会发送给所选模型服务，仅用于本次解读；不会写入测量记录，也不会用于训练。'
+
+const REPORT_NEXT_STEPS = [
+  '把报告原件、正在服用的药物和这份解读一起带给医生。',
+  '如报告标注异常，询问医生是否需要复查、进一步检查或调整随访安排。',
+  '不要根据 AI 解读自行用药、停药或改变剂量。',
+]
+
+const REPORT_SYSTEM = [
+  '你是健康资料阅读助手，帮助用户理解上传报告上的文字、数值和报告自身标注的参考区间。',
+  '必须遵守：',
+  '1. 不诊断疾病、不判断是否患病、不输出“符合几项”、不做任何风险分层。',
+  '2. 不提供用药、停药、剂量调整、处方、治疗方案、手术或具体检查项目建议。',
+  '3. 不生成个性化的食谱、训练计划或补剂处方；一般健康信息必须注明“非处方”，具体方案由医生决定。',
+  '4. 只依据报告中可读到的内容；看不清、缺失或没有参考区间时写“报告未标注/看不清”，不要猜测或补全。',
+  '5. 参考区间一律使用报告原件上标注的区间，不要使用你记忆中的通用区间。',
+  '6. 对异常项要解释清楚：这项指标主要反映什么；报告值高于/低于参考区间时，通常可能与哪些常见情况有关、还可能受哪些因素影响。用“可能与 / 常见于 / 需要结合”等措辞，不下诊断，不写“你患有”。',
+  '7. 建议只给一般性内容：复查、记录、就诊沟通、公开参考的生活方式信息；不得给具体药物、剂量、停药、治疗方案、个性化食谱或训练计划。',
+  '8. 不要在每个指标里重复免责声明；免责声明由界面统一展示。',
+  '只输出一个 JSON 对象，不要 markdown 代码块，不要额外解释。',
+].join('\n')
+
+
+const REPORT_SCHEMA = [
+  '{',
+  '  "reportType": "lab_report|medical_record|prescription|imaging|other|unknown",',
+  '  "summary": "用 1-3 句话概括报告里有什么；不做诊断",',
+  '  "indicators": [',
+  '    {',
+  '      "name": "指标全名",',
+  '      "abbr": "缩写，没有则空字符串",',
+  '      "value": "报告原文数值（字符串，不要换算单位）",',
+  '      "unit": "单位",',
+  '      "reference": "报告标注的参考区间；没有则写“报告未标注”",',
+  '      "flag": "high|low|normal|unknown",',
+  '      "meaning": "这项指标主要反映/用于评估什么（1-2 句）",',
+  '      "abnormalMeaning": "当报告值高于/低于参考区间时，通常可能与哪些常见情况有关、还可能受哪些因素影响；用“可能与/常见于/需要结合”等措辞，不下诊断",',
+  '      "suggestion": "1-2 条一般建议（复查/记录/就诊沟通/公开参考的生活方式）；不得给药物、剂量、停药、处方、治疗、个性化食谱或训练计划"',
+  '    }',
+  '  ],',
+  '  "questions": ["汇总 3-5 个可以问医生的问题"],',
+  '  "generalInfo": ["只在有把握时给出公开的一般健康信息；不得是个性化处方"],',
+  '  "confidence": "high|medium|low"',
+  '}',
+].join('\n')
+
+function reportPrompt(document) {
+  return [
+    '请阅读这份报告，提取可读的检验/检查指标并解释，供用户和医生沟通使用。',
+    `报告标题：${document.title ?? '未命名'}`,
+    `报告类型：${DOCUMENT_TYPES.find((item) => item.code === document.type)?.name ?? document.type}`,
+    `报告日期：${document.docDate ?? '未标注'}`,
+    document.note ? `用户备注：${String(document.note).slice(0, 200)}` : '',
+    '只输出一个 JSON 对象，格式如下：',
+    REPORT_SCHEMA,
+    '要求：',
+    '- value / reference 用字符串保留报告原文，不要换算单位，不要补全缺失值。',
+    '- flag 只能依据报告自身标注的参考区间判断；没有区间用 unknown。',
+    `- indicators 最多 ${REPORT_MAX_INDICATORS} 项；看不清的项不要编造。`,
+    '- 对 high / low 的异常项，meaning、abnormalMeaning、suggestion 都要写；正常项可以只写 meaning。',
+    '- abnormalMeaning 要说明“异常通常可能与哪些常见情况有关、还可能受哪些因素影响”，但不要下结论；不要写“你患有××”。',
+    '- suggestion 只给一般性建议（复查、记录、就诊沟通、公开参考的生活方式），不要写药物、剂量、停药、处方、治疗或个性化食谱/训练计划。',
+    '- 不要在每个指标里重复免责声明，也不要在每个指标里写“问医生”；把问题汇总到 questions。',
+    '- 处方、用药剂量不要解读，不要给用药建议。',
+    '- 如果这不是检验报告，indicators 可以为空，summary 概括文件类型与可读内容。',
+    '- generalInfo 最多 5 条，且不得包含用药、停药、剂量、处方、治疗或个性化饮食/运动方案；没有把握就给空数组。',
+  ].filter(Boolean).join('\n')
+}
+
+const ADVICE_PATTERN = /(服用|口服|注射|停药|停用|减量|加量|剂量|处方|用药|治疗方案|手术|化疗|放疗)/
+const DIAGNOSIS_PATTERN = /(诊断[:：]|诊断为|确诊为|患有|得了|可能是|提示.{0,6}(有|患|糖尿病|高血压|高血脂|高脂血症|高尿酸|综合征)|显示.{0,6}(糖尿病|高血压|高血脂|高脂血症|高尿酸|综合征)|考虑.{0,6}(糖尿病|高血压|高血脂|高脂血症|高尿酸|综合征)|符合.{0,8}(综合征|糖尿病|高血压|高血脂|高脂血症|高尿酸)|高脂血症|代谢综合征|风险分层)/
+
+function cleanText(value, max) {
+  const text = String(value ?? '').replace(/\u0000/g, '').trim()
+  return Array.from(text).slice(0, max).join('')
+}
+
+/** Keep free text inside the product boundary; a model can still misfire. */
+function safeReportText(value, fallback, { advice = true } = {}) {
+  const text = cleanText(value, 400)
+  if (text === '') return fallback
+  if (DIAGNOSIS_PATTERN.test(text)) return fallback
+  if (advice && ADVICE_PATTERN.test(text)) return fallback
+  return text
+}
+
+function normalizeReportFlag(value) {
+  const flag = String(value ?? '').trim().toLowerCase()
+  return ['high', 'low', 'normal', 'unknown'].includes(flag) ? flag : 'unknown'
+}
+
+/** Parse the model reply strictly; malformed output never reaches the UI. */
+function parseReportAnalysis(text) {
+  const raw = String(text ?? '').trim()
+  if (raw === '') return { ok: false, error: '模型没有返回解读结果，请重试或换一个模型。' }
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const body = fenced ? fenced[1] : raw
+  const start = body.indexOf('{')
+  const end = body.lastIndexOf('}')
+  if (start < 0 || end <= start) {
+    return { ok: false, error: '解读结果格式无法解析，请重试或换一个模型。' }
+  }
+  let parsed
+  try {
+    parsed = JSON.parse(body.slice(start, end + 1))
+  } catch {
+    return { ok: false, error: '解读结果不是有效 JSON，请重试或换一个模型。' }
+  }
+  const summary = safeReportText(
+    parsed?.summary,
+    '报告内容已读取；具体含义请以报告原件和医生解释为准。',
+    { advice: false },
+  )
+  const indicators = []
+  for (const row of Array.isArray(parsed?.indicators) ? parsed.indicators.slice(0, REPORT_MAX_INDICATORS) : []) {
+    if (!row || typeof row !== 'object') continue
+    const name = cleanText(row.name, 80)
+    if (!name) continue
+    // A diagnosis line is not an indicator; do not surface it as one.
+    if (DIAGNOSIS_PATTERN.test(name)) continue
+    const reference = cleanText(row.reference, 80) || '报告未标注'
+    indicators.push({
+      name,
+      abbr: cleanText(row.abbr, 40),
+      value: cleanText(row.value, 40),
+      unit: cleanText(row.unit, 20),
+      reference,
+      flag: normalizeReportFlag(row.flag),
+      meaning: safeReportText(
+        row.meaning ?? row.plain,
+        '该指标用于报告中的相应检查项目。',
+      ),
+      abnormalMeaning: safeReportText(
+        row.abnormalMeaning,
+        '报告值超出报告标注的参考范围；单次结果不能说明是否患病，需结合其他检查与医生判断。',
+      ),
+      suggestion: safeReportText(
+        row.suggestion,
+        '具体处理请以医生意见为准；可携带报告复诊。',
+      ),
+    })
+  }
+  const questions = (Array.isArray(parsed?.questions) ? parsed.questions : [])
+    .map((item) => cleanText(item, 200))
+    .filter(Boolean)
+    .slice(0, 6)
+  const generalInfo = (Array.isArray(parsed?.generalInfo) ? parsed.generalInfo : [])
+    .map((item) => cleanText(item, 300))
+    .filter((item) => item && !ADVICE_PATTERN.test(item) && !DIAGNOSIS_PATTERN.test(item))
+    .slice(0, 5)
+  if (summary === '' && indicators.length === 0) {
+    return { ok: false, error: '模型没有识别到可读的报告内容，请换一张更清晰的照片或换一个模型。' }
+  }
+  return {
+    ok: true,
+    analysis: {
+      reportType: ['lab_report', 'medical_record', 'prescription', 'imaging', 'other', 'unknown']
+        .includes(String(parsed?.reportType)) ? parsed.reportType : 'unknown',
+      summary,
+      indicators,
+      questions,
+      generalInfo,
+      confidence: ['high', 'medium', 'low'].includes(String(parsed?.confidence))
+        ? parsed.confidence : 'unknown',
+    },
+  }
+}
+
+/** Read the archived file and classify it by magic bytes, never by filename. */
+function classifyReportFile(buffer, fileName) {
+  const mediaType = detectImageMediaType(buffer)
+  if (mediaType) return { kind: 'image', mediaType }
+  if (buffer.length >= 5 && buffer.toString('ascii', 0, 5) === '%PDF-') return { kind: 'pdf' }
+  if (String(fileName ?? '').toLowerCase().endsWith('.txt')) return { kind: 'text' }
+  return { kind: 'unsupported' }
+}
+
+/**
+ * Catalog + preference for the report model picker. The same route rules as the
+ * meal estimate apply: auto prefers the agent default, fixed pins one route.
+ */
+async function reportCatalog(ctx, store) {
+  return buildEstimateCatalog({
+    llm: ctx?.get?.('llm'),
+    store,
+    getDefaultSelection: () => ctx?.get?.('agentDefaultModel')?.currentSelection?.(),
+  })
+}
+
+async function saveReportSettings(ctx, store, args) {
+  return updateEstimateSettings({
+    llm: ctx?.get?.('llm'),
+    store,
+    patch: args?.settings ?? args,
+    getDefaultSelection: () => ctx?.get?.('agentDefaultModel')?.currentSelection?.(),
+  })
+}
+
+/** Resolve one archived document to a model-readable payload. */
+async function readReportDocument(document, service) {
+  if (!document?.filePath) {
+    return { ok: false, error: '这份档案没有上传文件，请先上传报告图片或文本。' }
+  }
+  const root = resolve(service.baseDir, 'documents')
+  const target = resolve(document.filePath)
+  const sameRoot = process.platform === 'win32'
+    ? target.toLowerCase() === root.toLowerCase()
+    : target === root
+  const insideRoot = process.platform === 'win32'
+    ? target.toLowerCase().startsWith(root.toLowerCase() + sep)
+    : target.startsWith(root + sep)
+  if (!sameRoot && !insideRoot) {
+    return { ok: false, error: '报告文件不在本插件的档案目录中，无法用于 AI 解读。' }
+  }
+  let info
+  try {
+    info = await stat(target)
+  } catch {
+    return { ok: false, error: '找不到报告文件，可能已被移动或删除。' }
+  }
+  if (!info.isFile()) return { ok: false, error: '报告路径不是一个文件。' }
+  if (info.size > REPORT_MAX_IMAGE_BYTES) {
+    return { ok: false, error: '报告文件过大，请压缩到 12 MB 以内再试。' }
+  }
+  let buffer
+  try {
+    buffer = await readFile(target)
+  } catch (error) {
+    return { ok: false, error: `报告文件读取失败：${String(error?.message ?? error)}` }
+  }
+  const kind = classifyReportFile(buffer, document.fileName)
+  if (kind.kind === 'pdf') {
+    return {
+      ok: false,
+      error: 'PDF 暂不支持直接解读。请把报告页面截图或拍照成图片后重新上传，或直接上传图片报告。',
+    }
+  }
+  if (kind.kind === 'unsupported') {
+    return { ok: false, error: '只支持图片（PNG / JPEG / WebP）或文本（.txt）报告；PDF 请先截图。' }
+  }
+  if (kind.kind === 'text') {
+    const text = buffer.toString('utf8')
+    const replacement = (text.match(/\uFFFD/g) ?? []).length
+    if (text.trim() === '' || replacement > Math.max(8, text.length * 0.05)) {
+      return { ok: false, error: '文本报告编码无法识别或内容为空，请换一个文件。' }
+    }
+    return {
+      ok: true,
+      kind: 'text',
+      text: Array.from(text.trim()).slice(0, REPORT_MAX_TEXT_CHARS).join(''),
+    }
+  }
+  return { ok: true, kind: 'image', buffer, mediaType: kind.mediaType }
+}
+
+/**
+ * Interpret one archived report. Nothing is persisted: the panel only receives
+ * a proposal with a fixed disclaimer and the model that produced it.
+ */
+async function analyzeReportDocument(ctx, service, { member, id } = {}, reportStore) {
+  if (!id) return { ok: false, error: '缺少档案 id。' }
+  let resolved
+  try {
+    resolved = await service.resolveMember(member)
+  } catch (error) {
+    return { ok: false, error: `无法确认成员：${String(error?.message ?? error)}` }
+  }
+  if (!resolved.ok) return resolved
+  const targetMember = resolved.member
+  const listed = await service.listDocuments(targetMember.name)
+  if (!listed.ok) return listed
+  const document = listed.documents.find((item) => item.id === id)
+  if (!document) return { ok: false, error: '找不到这份档案。' }
+  if (document.type === 'prescription') {
+    return { ok: false, error: '处方不提供 AI 解读，请以医生处方和药师指导为准。' }
+  }
+
+  const file = await readReportDocument(document, service)
+  if (!file.ok) return file
+
+  const llm = ctx?.get?.('llm')
+  const attachments = ctx?.get?.('attachments')
+  if (!llm) return { ok: false, error: '当前没有可用的模型服务，请先在 DSH 设置里接入模型。' }
+  if (file.kind === 'image' && !attachments) {
+    return { ok: false, error: '当前没有可用的图片附件服务，无法读取报告图片。' }
+  }
+
+  let settings
+  try {
+    settings = await reportStore.get()
+  } catch {
+    settings = normalizeEstimateSettings({})
+  }
+  let route
+  try {
+    route = await resolveEstimateRoute(settings, llm, {
+      getDefaultSelection: () => ctx?.get?.('agentDefaultModel')?.currentSelection?.(),
+    })
+  } catch {
+    route = undefined
+  }
+  if (!route) {
+    return {
+      ok: false,
+      error: settings.mode === 'fixed'
+        ? `当前配置的解读模型「${settings.provider}/${settings.model}」不可用，请在解读弹窗里改回自动选择或换一个模型。`
+        : '当前没有可用的图片模型，请先在 DSH 设置 → 模型服务里接入一个支持图片输入的模型。',
+    }
+  }
+
+  let attachment
+  if (file.kind === 'image') {
+    try {
+      const ext = file.mediaType === 'image/png' ? 'png' : file.mediaType === 'image/webp' ? 'webp' : 'jpg'
+      attachment = await attachments.saveImage({
+        data: file.buffer,
+        mediaType: file.mediaType,
+        name: `report-${Date.now()}.${ext}`,
+      })
+    } catch (error) {
+      return { ok: false, error: `报告图片无法用于解读：${String(error?.message ?? error)}` }
+    }
+  }
+
+  const prompt = reportPrompt(document)
+  const signal = typeof AbortSignal.timeout === 'function'
+    ? AbortSignal.timeout(REPORT_TIMEOUT_MS)
+    : undefined
+  let text = ''
+  try {
+    const stream = llm.stream({
+      provider: route.provider,
+      model: route.model,
+      system: REPORT_SYSTEM,
+      messages: [{
+        role: 'user',
+        content: file.kind === 'image'
+          ? [
+              { type: 'text', text: prompt },
+              { type: 'image', attachment },
+            ]
+          : [{ type: 'text', text: `${prompt}\n\n报告文字内容：\n${file.text}` }],
+      }],
+      maxTokens: 3000,
+      temperature: 0.1,
+      signal,
+    })
+    for await (const chunk of stream) {
+      if (chunk?.type === 'text-delta') text += chunk.text ?? ''
+      else if (chunk?.type === 'finish') {
+        const kind = chunk.reason?.kind
+        if (kind === 'error' || kind === 'aborted') {
+          throw new Error(chunk.reason?.failure?.message ?? '模型调用失败。')
+        }
+      }
+    }
+  } catch (error) {
+    const name = error?.name
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      return { ok: false, error: '解读超时，请重试或换一个模型。' }
+    }
+    return { ok: false, error: `解读失败：${String(error?.message ?? error)}` }
+  }
+
+  const parsed = parseReportAnalysis(text)
+  if (!parsed.ok) return parsed
+  if (parsed.analysis.reportType === 'prescription') {
+    return {
+      ok: false,
+      error: '这份文件看起来是处方，AI 不解读处方或用药；请以医生处方和药师指导为准。',
+    }
+  }
+  return {
+    ok: true,
+    analysis: {
+      documentId: document.id,
+      title: document.title,
+      docDate: document.docDate,
+      type: document.type,
+      sourceKind: file.kind,
+      sourceText: file.kind === 'text' ? file.text.slice(0, 6000) : null,
+      nextSteps: REPORT_NEXT_STEPS,
+      ...parsed.analysis,
+      model: {
+        provider: route.provider,
+        providerName: route.providerName,
+        model: route.model,
+        modelName: route.modelName,
+        source: route.source,
+      },
+      generatedAt: new Date().toISOString(),
+    },
+    disclaimer: REPORT_DISCLAIMER,
+    privacy: REPORT_PRIVACY,
+  }
+}
+
+/**
+ * Windows-local clipboard bridge for the invite-code copy button.
+ */
 function copyToSystemClipboard(text) {
   return new Promise((resolve, reject) => {
     if (process.platform !== 'win32') {

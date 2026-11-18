@@ -1143,6 +1143,68 @@ const noHeightBmi = await profile.record({ member: '未评估成员', measuredAt
 check('weight without height derives no BMI and does not fail',
   noHeightBmi.ok && noHeightBmi.record.values.bmi === undefined, noHeightBmi.record)
 
+// A height added after a weight record must still produce a readable BMI: the
+// panel, series and statistics derive it on read without rewriting the record.
+const lateHeight = await profile.createMember({ name: '后补身高', sex: 'male' })
+check('late-height member created', lateHeight.ok, lateHeight)
+const legacyWeight = await profile.record({ member: '后补身高', measuredAt: stamp(1, 7), values: { weight: 80 } })
+check('legacy weight without height stores no BMI',
+  legacyWeight.ok && legacyWeight.record.values.bmi === undefined, legacyWeight.record)
+await profile.updateMember('后补身高', { height: 180 })
+const legacyOverview = await profile.overview('后补身高')
+const legacyBmiLatest = legacyOverview.latest.find((item) => item.code === 'bmi')
+check('overview derives BMI for a weight record saved before the height',
+  legacyBmiLatest?.value === 24.7 && legacyBmiLatest?.display === '24.7', legacyBmiLatest)
+check('BMI series is derived from the weight record',
+  legacyOverview.series.bmi?.points.length === 1
+  && legacyOverview.series.bmi.points[0].value === 24.7, legacyOverview.series.bmi)
+const legacyBmiStats = await profile.stats({ member: '后补身高', metric: 'bmi' })
+check('stats derive BMI from the weight record',
+  legacyBmiStats.ok && legacyBmiStats.sampleCount === 1 && legacyBmiStats.last.value === 24.7,
+  legacyBmiStats)
+
+// A server-derived BMI is refreshed when the member corrects the height; an
+// explicitly entered BMI is a user value and stays untouched.
+const heightFix = await profile.createMember({ name: '改身高', sex: 'male', height: 175 })
+check('height-fix member created', heightFix.ok, heightFix)
+const beforeFix = await profile.record({ member: '改身高', measuredAt: stamp(1, 8), values: { weight: 70 } })
+check('weight stores a derived BMI at the current height',
+  beforeFix.ok && beforeFix.record.values.bmi === 22.9
+  && JSON.stringify(beforeFix.record.derived) === JSON.stringify(['bmi']), beforeFix.record)
+await profile.updateMember('改身高', { height: 180 })
+const fixedOverview = await profile.overview('改身高')
+check('derived BMI follows a corrected height',
+  fixedOverview.latest.find((item) => item.code === 'bmi')?.value === 21.6,
+  fixedOverview.latest.find((item) => item.code === 'bmi'))
+const explicitFix = await profile.record({
+  member: '改身高', measuredAt: stamp(1, 9), values: { weight: 70, bmi: 23.1 },
+})
+check('an explicitly entered BMI is not overwritten by the height derivation',
+  explicitFix.ok && explicitFix.record.values.bmi === 23.1 && !explicitFix.record.derived,
+  explicitFix.record)
+
+console.log('\n[goals: one season measurement]')
+await profile.setGoal('我', { code: 'lean_muscle' })
+const oneBodyfat = await profile.record({ member: '我', measuredAt: stamp(0, 9), values: { bodyfat: 20 } })
+check('one season body-fat record saved', oneBodyfat.ok, oneBodyfat)
+const oneLean = (await profile.goalOverview('我')).goals.find((goal) => goal.code === 'lean_muscle')
+const singleBodyfat = oneLean?.targets.find((row) => row.metric === 'bodyfat')
+check('a single season record has no fake delta',
+  singleBodyfat?.baseline?.value === 20 && singleBodyfat?.deltaSinceBaseline === null
+  && singleBodyfat?.deltaDisplay === null && singleBodyfat?.singleMeasurement === true,
+  singleBodyfat)
+const secondBodyfat = await profile.record({ member: '我', measuredAt: stamp(0, 10), values: { bodyfat: 19 } })
+check('second season body-fat record saved', secondBodyfat.ok, secondBodyfat)
+const twoLean = (await profile.goalOverview('我')).goals.find((goal) => goal.code === 'lean_muscle')
+const comparedBodyfat = twoLean?.targets.find((row) => row.metric === 'bodyfat')
+check('a second season record produces a real delta',
+  comparedBodyfat?.deltaSinceBaseline === -1 && comparedBodyfat?.deltaDisplay === '-1%'
+  && comparedBodyfat?.singleMeasurement === false, comparedBodyfat)
+const singleReview = twoLean?.seasonReview?.body.find((row) => row.metric === 'bodyfat')
+check('season review keeps the baseline and the delta',
+  singleReview?.baseline === 20 && singleReview?.latest === 19 && singleReview?.delta === -1
+  && singleReview?.single === false, singleReview)
+
 console.log('\n[metrics: kcal]')
 const kcalMetric = METRICS.find((metric) => metric.code === 'kcal')
 check('kcal metric is a trend-only diet metric',

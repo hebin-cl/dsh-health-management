@@ -5,12 +5,12 @@ Local-only family health records and two management goals for DeepSeek Harness.
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-0B0D12?style=flat-square)](https://github.com/topics/dsh-plugin)
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
 [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
-[![release v1.4.0](https://img.shields.io/badge/release-v1.4.0-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
+[![release v1.4.1](https://img.shields.io/badge/release-v1.4.1-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
 [![npm](https://img.shields.io/npm/v/dsh-health-management?style=flat-square&color=D7FF3F)](https://www.npmjs.com/package/dsh-health-management)
 
 <p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="Health Management for DeepSeek Harness cover" width="100%"></p>
 
-Record blood pressure, glucose, lipids, uric acid, weight, waist, body fat, sleep, training and more for up to eight family members. Two management goals are built in: **metabolic management** (core indicators — waist, blood pressure, fasting glucose, triglycerides, HDL-C, BMI — shown against reference bands with target gaps) and **Lean Account** (training, protein, sleep and water accounts in a 12-week season). Records and descriptive statistics stay on this machine — no diagnosis, treatment or medication advice.
+Record blood pressure, glucose, lipids, uric acid, weight, waist, body fat, sleep, training and more for up to eight family members. Two management goals are built in: **metabolic management** (core indicators — waist, blood pressure, fasting glucose, triglycerides, HDL-C, BMI — shown against reference bands with target gaps) and **Lean Account** (training, meals, sleep and water accounts in a 12-week season). Records and descriptive statistics stay on this machine — no diagnosis, treatment or medication advice.
 
 ## Install in 30 seconds
 
@@ -30,6 +30,15 @@ Requires DeepSeek Harness `>=0.2.2-rc.1 <0.3.0` and Node 22+; refresh the Web UI
 Lean Account overview: four behaviour accounts, the weekly ledger and the body-composition statement.
 
 > Records and descriptive statistics only; no diagnosis, treatment, medication, training-plan, recipe or supplement advice; reference ranges are population references, not personal targets.
+
+## What's new in 1.4.1
+
+- **Member-aware key metrics in the quick card** — click Little Muscle King to see the current member's latest key values without opening the panel: weight / body fat / skeletal muscle / waist for a lean-muscle member, or a 7-day blood-pressure average plus fasting glucose / waist / triglycerides / HDL-C for a metabolic member. Values are reference only, never a diagnosis.
+- **Goal-aware reminders** — an active lean-muscle goal alternates water and training prompts; an active metabolic goal prompts measure / meal / activity / sleep. The reminder uses record counts, goal codes and last water/training times, never a measurement value.
+- **Lean account and menu cleanup** — the lean account is now 大练 / 大餐 / 大睡 / 大水; the top-level Diet tab is gone and clicking 大餐 opens the diet manager (today / 7-day summary, meals, add meal).
+- **Default identity** — default name 小肌霸, default portrait from the supplied image, and the same portrait as the plugin icon. Both remain configurable.
+- **Report AI interpretation** — upload a PNG / JPEG / WebP or `.txt` report to **Archive → Documents**, open **AI 解读**, and pick an image-capable model. The result explains the report's own values and reference ranges, labels the provider/model that produced it, and always shows a fixed "not a diagnosis; consult your doctor" disclaimer. A prescription is refused, a PDF asks for a screenshot/photo, and nothing is written to measurements or diagnosis tags. The report model is stored separately from the meal-estimate model.
+- **Body-composition statement** — quick entry button, column headers, derived BMI on read and no fake `0` delta for a single season record.
 
 ## What's new in 1.4.0
 
@@ -62,7 +71,7 @@ Squad and venue features are MVP/pilot and labelled as such in the UI.
 - **Me first** — opens on **我** (self); other members appear only after the user adds them.
 - **Metrics** — blood pressure, heart rate, fasting/postprandial glucose, HbA1c, lipids, uric acid, weight, BMI, waist, body fat, skeletal muscle, protein, kcal, water, sleep, strength-training minutes.
 - **Management goals** — `metabolic` (core metabolic monitoring with a 12-week review cycle and a copyable visit summary) and `lean_muscle` (12-week lean account).
-- **Lean Account** — 大练 / 蛋白 / 大睡 / 大水 accounts; daily deposits; 7×4 weekly ledger; season checkpoints; season review; new season without deleting history.
+- **Lean Account** — 大练 / 大餐 / 大睡 / 大水 accounts; daily deposits; 7×4 weekly ledger; season checkpoints; season review; new season without deleting history.
 - **Body-composition statement** — body fat, weight, muscle and waist are shown with reference bands and a season baseline delta; **never scored as pass/fail**.
 - **Progress photos** — daily shot, photo wall, two-photo compare, season compare; files stay on this machine.
 - **Meals** — breakfast / lunch / dinner / snack records with a photo and optional vision-model kcal/protein estimate; nothing is stored before confirmation.

@@ -113,16 +113,33 @@ try {
   const record = await service.record({
     member: '我',
     measuredAt: `${today} 09:00`,
-    values: { water: 300, training: 20, protein: 15 },
+    values: { water: 300, training: 20, protein: 15, weight: 68, bodyfat: 18, waist: 80 },
   })
   check('today record stored', record.ok === true)
 
   const status = await floatStatus(service)
-  check('status names the primary member', status.primaryMember?.name === '我')
+  check('status names the selected member', status.member?.name === '我')
   check('status counts today records', status.todayRecordCount === 1)
   check('status exposes metric counts only', status.counts.water === 1 && status.counts.training === 1)
   check('status lists the active goal code', status.activeGoals.some((item) => item.code === 'lean_muscle'))
+  check('status exposes latest timestamps for lean reminders',
+    Boolean(status.lastWaterAt) && Boolean(status.lastTrainingAt))
+  check('status exposes key metrics without verdicts',
+    status.keyMetrics.some((item) => item.code === 'weight' && item.value === 68))
   check('status carries no evaluation fields', !('latest' in status) && !('conditions' in status) && !('targets' in status))
+
+  const father = await service.createMember({ name: '爸爸', sex: 'male', relation: 'father' })
+  check('second member created', father.ok === true)
+  const fatherRecord = await service.record({
+    member: '爸爸',
+    measuredAt: `${today} 10:00`,
+    values: { weight: 70 },
+  })
+  check('father record stored', fatherRecord.ok === true)
+  const fatherStatus = await floatStatus(service, '爸爸')
+  check('floatStatus resolves a member reference', fatherStatus.member?.name === '爸爸')
+  check('father key metrics use father records',
+    fatherStatus.keyMetrics.some((item) => item.code === 'weight' && item.value === 70))
 } finally {
   await rm(dir, { recursive: true, force: true })
 }

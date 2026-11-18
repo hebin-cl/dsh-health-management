@@ -87,6 +87,11 @@ try {
   check('GET returns aggregate status', readBody.status?.todayRecordCount === 0 && readBody.status?.memberCount === 1)
   check('status exposes no evaluation payload', !('latest' in readBody.status) && !('conditions' in readBody.status))
 
+  const memberRead = await (await routes.get('/api/dsh-health/float').resource(
+    new Request('http://localhost/api/dsh-health/float?member=%E6%88%91'),
+  )).json()
+  check('GET resolves a member query', memberRead.ok === true && memberRead.status?.member?.name === '我')
+
   console.log('\n[float api: write]')
   const postRoute = routes.get('/api/dsh-health/float/settings')
   const req = {

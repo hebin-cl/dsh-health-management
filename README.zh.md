@@ -5,12 +5,12 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-0B0D12?style=flat-square)](https://github.com/topics/dsh-plugin)
 [![license](https://img.shields.io/badge/license-MIT-D7FF3F?style=flat-square)](LICENSE)
 [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.1-0B0D12?style=flat-square)](package.json)
-[![release v1.4.0](https://img.shields.io/badge/release-v1.4.0-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
+[![release v1.4.1](https://img.shields.io/badge/release-v1.4.1-D7FF3F?style=flat-square)](https://github.com/hebin-cl/dsh-health-management/releases)
 [![npm](https://img.shields.io/npm/v/dsh-health-management?style=flat-square&color=D7FF3F)](https://www.npmjs.com/package/dsh-health-management)
 
 <p align="center"><img src="https://raw.githubusercontent.com/hebin-cl/dsh-health-management/main/assets/readme-cover.png" alt="健康管理插件封面" width="100%"></p>
 
-记录最多 8 位家庭成员的血压、血糖、血脂、尿酸、体重、腰围、体脂、睡眠、训练等指标。插件内置两个管理目标：**代谢管理**（腰围、血压、空腹血糖、甘油三酯、HDL-C、BMI 等核心指标，按参考区间与目标差距展示）和**薄肌账户**（大练 / 蛋白 / 大睡 / 大水四个行为账户，12 周一个赛季）。所有数据只保存在本机，只做记录与描述性统计，不提供诊断、治疗或用药建议。
+记录最多 8 位家庭成员的血压、血糖、血脂、尿酸、体重、腰围、体脂、睡眠、训练等指标。插件内置两个管理目标：**代谢管理**（腰围、血压、空腹血糖、甘油三酯、HDL-C、BMI 等核心指标，按参考区间与目标差距展示）和**薄肌账户**（大练 / 大餐 / 大睡 / 大水四个行为账户，12 周一个赛季）。所有数据只保存在本机，只做记录与描述性统计，不提供诊断、治疗或用药建议。
 
 ## 30 秒安装
 
@@ -30,6 +30,15 @@ dsh plugin --profile <your-profile> add https://github.com/hebin-cl/dsh-health-m
 薄肌账户概览：四个行为账户、本周对账单与体成分对账单。
 
 > 仅做记录与描述性统计；不提供诊断、治疗、用药、训练计划、食谱或补剂建议；参考区间为人群参考值，不等于个人目标值。
+
+## 1.4.1 更新
+
+- **快捷卡片重点指标**：单击「小肌霸」直接看当前成员最近的重点指标，不必进入面板。薄肌成员：体重 / 体脂率 / 骨骼肌量 / 腰围；代谢成员：近 7 天血压均值 + 空腹血糖 / 腰围 / 甘油三酯 / HDL-C。只展示最近值与参考区间，不是诊断。
+- **按目标提醒**：薄肌目标在水和大练之间轮换提醒；代谢目标按测 / 吃 / 动 / 睡提醒。提醒只使用记录计数、目标代码和最近饮水/训练时间，不读取具体指标值。
+- **薄肌账户与菜单整理**：账户统一为大练 / 大餐 / 大睡 / 大水；移除一级「饮食」Tab，点击「大餐」打开饮食管理（今日/近 7 天汇总、餐次、记一餐）。
+- **默认形象**：默认名称「小肌霸」，默认使用上传的人像，插件图标也使用同一人像；名称和形象仍可自定义。
+- **报告 AI 解读**：在「档案 → 资料」上传 PNG / JPEG / WebP 或 `.txt` 报告后，点「AI 解读」并选择支持图片的模型。结果只解释报告自身的数值与参考区间，标注本次使用的 provider/model，并固定展示「不是诊断、请以医生实际诊断为准」的免责声明。处方直接拒绝；PDF 提示先截图/拍照；解读不会写入测量记录或疾病标签。解读模型与热量估算模型分开保存。
+- **体成分对账单**：增加录入快捷按钮、列头、读取时派生 BMI，单次记录不再显示假的 0 变化。
 
 ## 1.4.0 更新
 
@@ -62,7 +71,7 @@ dsh plugin --profile <your-profile> add https://github.com/hebin-cl/dsh-health-m
 - **默认「我」**：打开即展示「我」；只有用户主动添加成员后，才出现其他成员。
 - **指标**：血压、心率、空腹/餐后血糖、糖化血红蛋白、血脂、尿酸、体重、BMI、腰围、体脂率、骨骼肌量、蛋白质、热量（kcal）、饮水、睡眠、力量训练时长。
 - **管理目标**：`metabolic`（代谢综合征管理，含 12 周复盘与可复制就诊摘要）与 `lean_muscle`（薄肌管理）。
-- **薄肌账户**：大练/蛋白/大睡/大水四账户；每日存入；7×4 周对账；W4/W8/W12 检查点；赛季结算；开启新赛季不删历史。
+- **薄肌账户**：大练/大餐/大睡/大水四账户；每日存入；7×4 周对账；W4/W8/W12 检查点；赛季结算；开启新赛季不删历史。
 - **体成分对账单**：体脂/体重/骨骼肌/腰围显示参考区间与赛季基线 delta，**不计分、不排名、不评分**。
 - **照片**：每日一拍、照片墙、两张对比、赛季对比；只存本机。
 - **饮食**：早餐/午餐/晚餐/加餐记录，可附照片与模型估算的 kcal/蛋白质；确认前不落库。

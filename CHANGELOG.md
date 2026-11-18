@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.4.1 — 2026-11-18
+
+- **Member-aware key metrics in the quick card** — click Little Muscle King to see the current member's latest key values without opening the panel: weight / body fat / skeletal muscle / waist for a lean-muscle member, or a 7-day blood-pressure average plus fasting glucose / waist / triglycerides / HDL-C for a metabolic member. Values and reference bands only; never a diagnosis.
+- **Goal-aware reminders** — an active lean-muscle goal alternates water and 大练 prompts; an active metabolic goal prompts 测 / 吃 / 动 / 睡. The reminder uses record counts, goal codes and last water/training timestamps, never a measurement value.
+- **Lean account / menu cleanup** — 蛋白 is now 大餐 (internal metric stays `protein`); the top-level Diet tab is removed, and clicking 大餐 opens the diet manager instead.
+- **Default identity** — default name 小肌霸, default portrait from the supplied image, and the same portrait is the plugin icon; name and avatar remain configurable.
+- **Report AI interpretation** — an archived image (PNG / JPEG / WebP) or text
+  (`.txt`) report can be read by an image-capable model chosen in the panel.
+  The result shows the report original on the left and the abnormal indicators
+  on the right, with three layers per item (what it reflects, what an abnormal
+  value may relate to, general non-prescription suggestions), one shared
+  disclaimer, the provider/model label, and one question summary at the end.
+  Nothing is written; a prescription is refused and a PDF gets a
+  screenshot/photo instruction. The report-model preference is stored
+  separately from the meal-estimate model.
+- **Body-composition statement** — added a quick entry button, column headers,
+  derived BMI on read (including records saved before the height was known and
+  recomputation after a height correction), no fake `0` delta for a single
+  season record, and consistent units/empty values.
+
 ## 1.4.0 — 2026-11-17
 
 - **Little Muscle King (小肌霸)** — a draggable floating health buddy on the Web

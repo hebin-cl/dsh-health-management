@@ -1,11 +1,11 @@
 {
   "name": "dsh-health-management",
-  "version": "1.4.0",
-  "description": "Health management tracker for DeepSeek Harness: family metrics plus management goals (metabolic syndrome management and a 12-week lean-muscle season), a copyable visit summary, meal photos that can be estimated by a vision model, and Little Muscle King, a draggable floating health buddy with configurable reminders in DSH Settings. Records and descriptive statistics only; never diagnosis, training, nutrition or medication advice.",
+  "version": "1.4.1",
+  "description": "Health management tracker for DeepSeek Harness: family metrics plus management goals (metabolic syndrome management and a 12-week lean-muscle season), a copyable visit summary, meal photos that can be estimated by a vision model, and Little Muscle King, a draggable floating health buddy with configurable reminders, member-aware key metrics and goal-aware water/training prompts in DSH Settings. Records and descriptive statistics only; never diagnosis, training, nutrition or medication advice.",
   "type": "module",
   "license": "MIT",
   "author": "hebin-cl",
-  "icon": "./assets/icon-180.png",
+  "icon": "./icon.webp",
   "homepage": "https://github.com/hebin-cl/dsh-health-management#readme",
   "repository": {
     "type": "git",
@@ -43,7 +43,7 @@
     ".": "./index.js",
     "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg"
+    "./icon": "./icon.webp"
   },
   "files": [
     "index.js",
@@ -54,6 +54,7 @@
     "assets/*.webp",
     "assets/*.png",
     "icon.svg",
+    "icon.webp",
     "README.md",
     "README.zh.md",
     "LICENSE",
